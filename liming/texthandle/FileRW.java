@@ -9,6 +9,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import liming.key.encryption.RSA_Encryption;
 
@@ -135,10 +138,10 @@ public enum FileRW {
 	}
 
 	// 将字符串转为二进制数据并写入文件
-	public static boolean writeFile(String filePath, String content) {
+	public static boolean writeFile(String filePath, String content, boolean append) {
 		try {
 			File file = new File(filePath);
-			FileOutputStream fos = new FileOutputStream(file);
+			FileOutputStream fos = new FileOutputStream(file, append);
 			byte[] data = RSA_Encryption.stringToSignature(content);
 			fos.write(data);
 			fos.flush();
@@ -148,5 +151,17 @@ public enum FileRW {
 			e.printStackTrace();
 			return false;
 		}
+	}
+
+	/**
+	 * 
+	 * @param sourceFilePath 目标文件
+	 * @param destFilePath   新文件
+	 * @throws IOException
+	 */
+	public static void copyLargeFile(String sourceFilePath, String destFilePath) throws IOException {
+		Path sourcePath = Paths.get(sourceFilePath);
+		Path destPath = Paths.get(destFilePath);
+		Files.copy(sourcePath, destPath);
 	}
 }
