@@ -1,0 +1,53 @@
+HandleReceive类是一个Java语言编写的处理UDP数据包的类，主要用于接收和发送UDP数据包。该类实现了回调接口GetDataAndPacket，可以通过该接口获取处理后的数据包和发送数据包的方法。同时，该类可以添加多个DatagramSocket，可以在一个处理服务器上处理多个端口的数据包。
+
+使用方法：
+
+1. 创建HandleReceive对象：
+HandleReceive handleReceive = new HandleReceive(GetDataAndPacket gdap, int port,int dataSize);
+HandleReceive handleReceive = new HandleReceive(GetDataAndPacket gdap, DatagramSocket... sockets);
+HandleReceive handleReceive = new HandleReceive(GetDataAndPacket gdap, int port, int dataSize, int minPort, int maxPort);
+其中，gdap是回调接口，port是端口号，dataSize是接收区大小,sockets指定DatagramSocket,minPort是当port不可用时从minPort开始寻找可用的端口号，到maxPort为止。
+
+2. 添加DatagramSocket：
+handleReceive.addSocket(socket);
+其中，socket是DatagramSocket对象。
+
+3. 启动处理服务器：
+handleReceive.start();
+
+4. 发送数据包：
+handleReceive.send(Map<String, String> map, String ip, int port);
+handleReceive.send(Map<String, String> map, InetAddress address, int port,DatagramSocket socket);
+handleReceive.send(Map<String, String> map, DatagramPacket packet, DatagramSocket socket);
+handleReceive.send(Map<String, String> map, DatagramPacket packet);
+其中，map是发送的数据包内容，ip和port是目标IP和端口号，address是目标地址，socket是指定发送端口，packet是根据接收包回发数据。
+
+5. 关闭处理服务器：
+handleReceive.stop();
+
+6. 静态方法:
+	HandleReceive.setSendSpeed(int sendSpeed)设置发送区的大小
+	HandleReceive.setDebug(boolean debug)设置调试模式
+7. 补充说明：
+	设置基本参数的方法除setDebug外，在start后都设置无效，当stop后再次start才能生效
+
+HandleReceive类的主要方法和属性如下：
+
+- 构造函数：可以设置回调接口、端口号、接收区大小等参数。
+- addSocket/DatagramSocket getSockets：用于添加或获取DatagramSocket。
+- setPort/setDataSize/setDebug/setSendSpeed：用于设置端口号、接收区大小、调试模式和发送端处理速度等参数。
+- start/stop：用于启动或关闭接收和发送线程池。
+- send：用于发送数据包，可以使用指定的DatagramSocket、IP和端口号，或使用第一个DatagramSocket等。
+- getState：用于获取处理服务器的所有状态，包括DatagramSocket的状态、线程池的状态、基本属性和Text状态信息等。
+
+HandleReceive类的优点：
+
+1. 可以处理多个端口的数据包，可以在一个处理服务器上处理多个端口的数据包。
+
+2. 可以设置接收区大小和发送端处理速度，可以根据实际情况调整参数，以获得更好的处理效果。
+
+3. 支持调试模式，可以方便地调试程序。
+
+4. 可以获取处理服务器的所有状态，方便查看和分析处理服务器的运行情况。
+
+总之，HandleReceive类是一个非常实用的处理UDP数据包的类，可以帮助开发人员快速开发UDP数据包的处理程序。

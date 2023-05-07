@@ -1,0 +1,11 @@
+这是一个接口，用于处理文本数据和数据包。用户需要实现这个接口并提供以下三个方法的具体实现：
+
+1. sendDataToClient(Map<String, String> data, InetAddress address, int port, DatagramSocket socket)：该方法用于将收到的数据发送给客户端。用户需要提供一个Map类型的数据、目标地址、端口号和一个DatagramSocket对象。
+
+2. writeLog(Object message)：该方法用于写入普通日志信息。用户需要提供一个Object类型的信息。
+
+3. writeStrongLog(Object message)：该方法用于写入重要日志信息。用户需要提供一个Object类型的信息。
+
+此外，用户还需要实现一个isDataReceived(long timeout)方法，用于检查是否已经接收到数据。它需要一个long类型的超时参数，并返回一个布尔值。如果在超时时间内接收到了数据，返回true，否则返回false。
+
+请注意，这只是一个接口，用户需要根据自己的具体需求实现这些方法。

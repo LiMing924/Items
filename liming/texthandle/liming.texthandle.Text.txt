@@ -1,0 +1,74 @@
+Text类使用说明书
+
+1. 概述
+
+Text类是一个消息处理类，用于将Map<String, String>对象转换为DatagramPacket数组，并将DatagramPacket数组转换为Map<String, String>对象。Text类还可以将Map<String, String>对象转换为JSONNObject，并将JSONNObject转换为Map<String, String>对象。
+
+2. 使用方法
+
+2.1 创建Text对象
+
+Text对象的创建需要一个GetDataAndPacket对象和一个整数参数，整数参数用于设置数据包大小。例如：
+
+GetDataAndPacket gdap = new GetDataAndPacket();
+Text text = new Text(gdap, 1024);
+
+2.2 设置分包参数
+
+可以通过setSLEEP()方法设置分包参数。例如：
+
+text.setSLEEP(10);
+
+2.3 设置消息通道
+
+可以通过setGDAP()方法设置消息通道。例如：
+
+text.setGDAP(gdap);
+
+2.4 将Map<String, String>对象转换为DatagramPacket数组
+
+可以通过getPackets()方法将Map<String, String>对象转换为DatagramPacket数组。例如：
+
+Map<String, String> map = new HashMap<>();
+map.put("key1", "value1");
+map.put("key2", "value2");
+List<DatagramPacket> packets = text.getPackets(map);
+
+2.5 将DatagramPacket数组转换为Map<String, String>对象
+
+可以通过Handle()方法将DatagramPacket数组转换为Map<String, String>对象。例如：
+
+Map<String, String> map = text.Handle(packet);
+
+2.6 将Map<String, String>对象转换为JSONNObject
+
+可以通过getJSONString()方法将Map<String, String>对象转换为JSONNObject。例如：
+
+Map<String, String> map = new HashMap<>();
+map.put("key1", "value1");
+map.put("key2", "value2");
+String jsonString = text.getJSONString(map);
+
+2.7 将JSONNObject转换为Map<String, String>对象
+
+可以通过getMap()方法将JSONNObject转换为Map<String, String>对象。例如：
+
+JSONObject jsonObject = new JSONObject("{\"key1\":\"value1\",\"key2\":\"value2\"}");
+Map<String, String> map = text.getMap(jsonObject);
+
+2.8 获取Text对象状态
+
+可以通过getState()方法获取Text对象状态。例如：
+
+JSONObject state = text.getState();
+
+3. 注意事项
+
+在使用Text类时，需要注意以下几点：
+
+- Text类需要一个GetDataAndPacket对象作为参数。
+- Text类需要一个整数参数作为数据包大小。
+- 在使用getPackets()方法将Map<String, String>对象转换为DatagramPacket数组时，需要注意数据包大小是否符合要求。
+- 在使用Handle()方法将DatagramPacket数组转换为Map<String, String>对象时，需要注意数据包是否完整。
+- 在使用getJSONString()方法将Map<String, String>对象转换为JSONNObject时，需要注意Map<String, String>对象中的键值对是否符合JSON格式。
+- 在使用getMap()方法将JSONNObject转换为Map<String, String>对象时，需要注意JSONNObject是否符合JSON格式。
