@@ -98,6 +98,11 @@ public enum FileRW {
 		String result = "";
 		try {
 			File file = new File(filePath);
+			if (file.length() > Integer.MAX_VALUE) {
+				System.out.println("文件大小超过限制" + file.length() + ":" + Integer.MAX_VALUE
+						+ "，若本地复制文件请使用transferFiles(oldfilepath,newfilepath)");
+				return null;
+			}
 			FileInputStream fis = new FileInputStream(file);
 			byte[] data = new byte[(int) file.length()];
 			fis.read(data);
@@ -107,6 +112,26 @@ public enum FileRW {
 			e.printStackTrace();
 		}
 		return result;
+	}
+
+	// 将文件从一个地方转移到另一个地方
+	public static boolean transferFiles(String filePath, String newFilePath) {
+		try {
+			File file = new File(filePath);
+			FileInputStream inputStream = new FileInputStream(file);
+			FileOutputStream outputStream = new FileOutputStream(newFilePath);
+			byte[] buffer = new byte[102400];
+			int length;
+			while ((length = inputStream.read(buffer)) > 0) {
+				outputStream.write(buffer, 0, length);
+			}
+			inputStream.close();
+			outputStream.close();
+			return true;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	// 将字符串转为二进制数据并写入文件
