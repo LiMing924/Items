@@ -42,7 +42,7 @@ public enum FileRW {
 	}
 
 	/**
-	 * 读取文件
+	 * 读取文件，对文本文件读取
 	 * 
 	 * @param file 目标文件
 	 * @return 文件内容
@@ -66,14 +66,15 @@ public enum FileRW {
 	/**
 	 * 写入文件，采用覆盖的方式
 	 * 
-	 * @param file 目标文件
-	 * @param code 写入内容
+	 * @param file   目标文件
+	 * @param code   写入内容
+	 * @param append 是否追加写入
 	 * @return 写入结果
 	 */
-	public static boolean Write(File file, String code) {
+	public static boolean Write(File file, String code, boolean append) {
 		try {
 
-			OutputStreamWriter oStreamWriter = new OutputStreamWriter(new FileOutputStream(file), CODE.value);
+			OutputStreamWriter oStreamWriter = new OutputStreamWriter(new FileOutputStream(file, append), CODE.value);
 			oStreamWriter.append(code);
 			oStreamWriter.close();
 			return true;
@@ -137,7 +138,7 @@ public enum FileRW {
 		}
 	}
 
-	// 将字符串转为二进制数据并写入文件
+	// 将字符串转为二进制数据并写入文件，通过设置append的值选择是否追加写入
 	public static boolean writeFile(String filePath, String content, boolean append) {
 		try {
 			File file = new File(filePath);
