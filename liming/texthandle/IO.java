@@ -32,9 +32,22 @@ public class IO {
         private Thread thread;
         private volatile boolean running = true;
         private State state;
+        private IOData io;
+        private String code;
+        private float quality;
 
         public IOScreen(IOData io, float quality, String code, float factor) {
             state = new State(io, factor);
+            this.io = io;
+            this.code = code;
+            this.quality = quality;
+        }
+
+        public void start() {
+            running = true;
+            if (thread != null && !thread.isAlive()) {
+                thread.interrupt();
+            }
             thread = new Thread(() -> {
                 long StartTime = System.currentTimeMillis();
                 while (running) {
@@ -71,10 +84,6 @@ public class IO {
                     }
                 }
             });
-        }
-
-        public void start() {
-            running = true;
             thread.start();
 
         }
