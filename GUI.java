@@ -7,14 +7,13 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 
 public class GUI extends JFrame implements ActionListener {
     private JLabel imageLabel, fpsLabel;
     private JButton startButton, stopButton;
     private ImageIcon imageIcon;
     private BufferedImage bufferImage;
-    IO.IOThread thread;
+    IO.IOScreen ioscreen;
 
     public GUI() {
         setTitle("图片展示");
@@ -46,50 +45,53 @@ public class GUI extends JFrame implements ActionListener {
             private long lastTime = System.currentTimeMillis();
             private int frameCount = 0;
 
+            private void updateFPS() {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastTime >= 1000) {
+                    int fps = (int) (frameCount * 1000 / (currentTime - lastTime));
+                    fpsLabel.setText(fps + " fps");
+                    lastTime = currentTime;
+                    frameCount = 0;
+                }
+            }
+
             @Override
             public void getByte(byte[] data) {
                 // System.out.println(data.length);
-                new Thread(() -> {
-                    try {
-                        // 将二进制数据流转为图片
-                        ByteArrayInputStream bis = new ByteArrayInputStream(data);
-                        BufferedImage image = ImageIO.read(bis);
-                        bis.close();
+                try {
+                    // 将二进制数据流转为图片
+                    // ByteArrayInputStream bis = new ByteArrayInputStream(data);
+                    // BufferedImage image = ImageIO.read(bis);
+                    // bis.close();
+                    // // 创建双缓冲区
+                    // if (bufferImage == null) {
+                    // bufferImage = new BufferedImage(image.getWidth(), image.getHeight(),
+                    // BufferedImage.TYPE_INT_RGB);
+                    // }
 
-                        // 创建双缓冲区
-                        if (bufferImage == null) {
-                            bufferImage = new BufferedImage(image.getWidth(), image.getHeight(),
-                                    BufferedImage.TYPE_INT_RGB);
-                        }
+                    // // 在缓冲区中绘制图像
+                    // Graphics2D g2d = bufferImage.createGraphics();
+                    // g2d.drawImage(image, 0, 0, null);
+                    // g2d.dispose();
 
-                        // 在缓冲区中绘制图像
-                        Graphics2D g2d = bufferImage.createGraphics();
-                        g2d.drawImage(image, 0, 0, null);
-                        g2d.dispose();
+                    // // 将缓冲区的内容绘制到GUI界面中
+                    // Image scaledImage = bufferImage.getScaledInstance(imageLabel.getWidth(),
+                    // imageLabel.getHeight(),
+                    // Image.SCALE_SMOOTH);
+                    // ImageIcon icon = new ImageIcon(scaledImage);
+                    // imageLabel.setIcon(icon);
+                    // imageLabel.repaint();
 
-                        // 将缓冲区的内容绘制到GUI界面中
-                        Image scaledImage = bufferImage.getScaledInstance(imageLabel.getWidth(), imageLabel.getHeight(),
-                                Image.SCALE_SMOOTH);
-                        ImageIcon icon = new ImageIcon(scaledImage);
-                        imageLabel.setIcon(icon);
-                        imageLabel.repaint();
-
-                        long currentTime = System.currentTimeMillis();
-                        frameCount++;
-                        if (currentTime - lastTime >= 1000) {
-                            int fps = (int) (frameCount * 1000 / (currentTime - lastTime));
-                            fpsLabel.setText(fps + " fps");
-                            lastTime = currentTime;
-                            frameCount = 0;
-                        }
-                    } catch (Exception e) {
-                        // TODO: handle exception
-                    }
-                }).start();
+                    // 更新FPS
+                    frameCount++;
+                    updateFPS();
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
             }
         };
-        System.out.println(iod.setTime(1 * 1000, 15));
-        thread = IO.getScreen(iod, 0.7f, "jpg");
+        iod.setTime(1 * 1000, 60);
+        ioscreen = IO.getScreen(iod, 0.8f, "jpg", 0.2f);
 
     }
 
@@ -97,10 +99,10 @@ public class GUI extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == startButton) {
             // TODO: 点击开始按钮后的逻辑
-            thread.start();
+            ioscreen.start();
         } else if (e.getSource() == stopButton) {
             // TODO: 点击结束按钮后的逻辑
-            thread.stop();
+            ioscreen.stop();
         }
     }
 

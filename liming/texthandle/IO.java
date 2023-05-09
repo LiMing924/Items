@@ -20,45 +20,53 @@ public class IO {
         }
     }
 
-    public static IOThread getScreen(IOData io, float quality, String code) {
-        IOThread iothread = new IOThread(io, quality, code);
-        return iothread;
+    public static IOScreen getScreen(IOData io, float quality, String code, float factor) {
+        IOScreen ioscreen = new IOScreen(io, quality, code, factor);
+        return ioscreen;
     }
 
-    public static class IOThread {
+    /**
+     * 采用异步线程获取屏幕io流
+     */
+    public static class IOScreen {
         private Thread thread;
         private volatile boolean running = true;
+        private State state;
 
-        public IOThread(IOData io, float quality, String code) {
+        public IOScreen(IOData io, float quality, String code, float factor) {
+            state = new State(io, factor);
             thread = new Thread(() -> {
+                long StartTime = System.currentTimeMillis();
                 while (running) {
-                    long StartTime = System.currentTimeMillis();
-                    new Thread(() -> {
+                    Thread thread = new Thread(() -> {
                         try {
+                            synchronized (state) {
+                                if (!state.equals())
+                                    return;
+                                state.add();
+                            }
                             Robot robot = new Robot();
                             Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
                             BufferedImage screenCapture;
                             ByteArrayOutputStream baos;
-                            long S = System.currentTimeMillis();
                             screenCapture = robot.createScreenCapture(screenRect);
                             BufferedImage compressedImage = compressImage(screenCapture, quality);
                             baos = new ByteArrayOutputStream();
                             ImageIO.write(compressedImage, code, baos);
                             byte[] bytes = baos.toByteArray();
-                            // System.out.println(bytes.length);
                             io.getByte(bytes);
-                            long s = System.currentTimeMillis();
-                            long e = System.currentTimeMillis();
-                            System.out.println("S: " + S + "\t,s: " + s + "\t,e: " + e + "\tr: " + (s - S) + "\t,t: "
-                                    + (e - s) + "\t,a: " + (e - S) + "\t,size: " + bytes.length);
+                            synchronized (state) {
+                                state.remove();
+                            }
                         } catch (Exception e) {
                             // TODO: handle exception
                         }
-                    }).start();
+                    });
+                    thread.start();
                     try {
                         Thread.sleep(io.time - (System.currentTimeMillis() - StartTime) % io.time);
+
                     } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
@@ -83,6 +91,28 @@ public class IO {
             g2d.drawImage(image, 0, 0, width, height, null);
             g2d.dispose();
             return compressedImage;
+        }
+
+        private class State {
+            private long num;
+            private long max;
+
+            public State(IOData io, float factor) {
+                max = (long) Math.ceil((1 * 1000 / io.time) * factor);
+                num = 0;
+            }
+
+            public long add() {
+                return ++num;
+            }
+
+            public long remove() {
+                return --num;
+            }
+
+            private boolean equals() {
+                return num < max;
+            }
         }
     }
 }
