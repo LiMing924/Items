@@ -18,9 +18,11 @@ class UDPDataTemps {
 	private ExecutorService[] executors;
 	private UDP_Interface interface1;
 	private String[] values;// 正在处理的参数列表
+	private Object lock;
 
 	public UDPDataTemps(UDP_Interface interface1) {
 		this(interface1, 5);
+
 	}
 
 	public UDPDataTemps(UDP_Interface interface1, int size) {
@@ -33,35 +35,41 @@ class UDPDataTemps {
 		}
 		myThread = new MyThread();
 		myThread.start();
+		lock = new Object();
 	}
 
 	public Map<String, String> get(JSONObject object) throws InterruptedException, ExecutionException {
+
 		text("正在处理数据，map：", object);
 		text(Datas.keySet(), "添加数据=", object);
 		String key = object.optString(UDPData.keys.get(0));
 		int i;
-		for (i = 0; i < SIZE; i++) {
-			if (values[i] != null && values[i].equals(key)) {
-				break;
+		synchronized (lock) {
+			for (i = 0; i < SIZE; i++) {
+				if (values[i] != null && values[i].equals(key)) {
+					break;
+				}
 			}
-		}
 
-		if (i == SIZE) {
-			int[] handle = new int[SIZE];
-			for (int j = 0; j < SIZE; j++) {
-				ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executors[j];
-				handle[j] = threadPoolExecutor.getQueue().size();
-			}
-			i = 0;
-			for (int j = 1; j < handle.length; j++) {
-				if (handle[j] < handle[i]) {
-					i = j;
+			if (i == SIZE) {
+				int[] handle = new int[SIZE];
+				for (int j = 0; j < SIZE; j++) {
+					ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executors[j];
+					handle[j] = threadPoolExecutor.getQueue().size();
+				}
+				i = 0;
+				for (int j = 1; j < handle.length; j++) {
+					if (handle[j] < handle[i]) {
+						i = j;
+					}
 				}
 			}
 		}
 		final int x = i;
 		return executors[x].submit(() -> {
-			values[x] = key;
+			synchronized (lock) {
+				values[x] = key;
+			}
 			UDPData data;
 			int length = object.optInt(UDPData.keys.get(1));
 			if (Datas.containsKey(key)) {
@@ -73,7 +81,9 @@ class UDPDataTemps {
 				data = new UDPData(interface1, key, length);
 			}
 			data.put(object);
-			values[x] = null;
+			synchronized (lock) {
+				values[x] = null;
+			}
 			if (data.value())
 				return data.getData();
 			else {

@@ -47,7 +47,7 @@ public enum FileRW {
 	 * @param file 目标文件
 	 * @return 文件内容
 	 */
-	public static String Read(File file) {
+	public static String readString(File file) {
 		try {
 			BufferedReader bReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), CODE.value));// new一个BufferedReader对象，将文件内容读取到缓存
 			StringBuilder sb = new StringBuilder();// 定义一个字符串缓存，将字符串存放缓存中
@@ -71,7 +71,7 @@ public enum FileRW {
 	 * @param append 是否追加写入
 	 * @return 写入结果
 	 */
-	public static boolean Write(File file, String code, boolean append) {
+	public static boolean WriteString(File file, String code, boolean append) {
 		try {
 
 			OutputStreamWriter oStreamWriter = new OutputStreamWriter(new FileOutputStream(file, append), CODE.value);
