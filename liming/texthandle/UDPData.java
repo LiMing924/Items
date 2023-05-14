@@ -186,11 +186,9 @@ class UDPData {
         return ID;
     }
 
-    public Map<String, String> clear() {
-        Map<String, String> d = new HashMap<>(data);
+    public void clear() {
         data.clear();
         temps.clear();
-        return d;
     }
 
     @Override

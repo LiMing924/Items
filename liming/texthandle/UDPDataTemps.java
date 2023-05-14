@@ -48,7 +48,7 @@ class UDPDataTemps {
 		text(Datas.keySet(), "添加数据=", object);
 		UDPData data = new UDPData(interface1, object);
 		if (data.value()) {// 判断单个数据是否接收完,若接收完就直接返回结果
-			return data.clear();
+			return data.getData();
 		}
 		String key = data.getID();
 		int i;
@@ -90,7 +90,7 @@ class UDPDataTemps {
 				values[x] = null;
 			}
 			if (data1.value())
-				return data.clear();
+				return data.getData();
 			else {
 				Datas.put(key, data1);
 				return null;
