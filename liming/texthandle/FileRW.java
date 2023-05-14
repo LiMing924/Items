@@ -15,6 +15,21 @@ import java.nio.file.Paths;
 
 import liming.key.encryption.RSA_Encryption;
 
+/**
+ * FileRW类用于文件读写操作，提供了多种编码格式和读写方式。
+ * 包括读取文本文件、写入文本文件、将错误信息的堆栈数据转为文本显示、读取文件并将二进制数据转为字符串、将文件从一个地方转移到另一个地方、将字符串转为二进制数据并写入文件、复制大文件等功能。
+ * 
+ * 枚举类型FileRW表示文件编码格式，提供了多种编码格式可供选择。
+ * CODE表示当前编码格式，可以通过setCode方法设置编码格式。
+ * 
+ * readString方法用于读取文本文件，返回文件内容。
+ * WriteString方法用于写入文本文件，可以选择覆盖或追加写入。
+ * getError方法用于将错误信息的堆栈数据转为文本显示，返回错误信息字符串。
+ * readFile方法用于读取文件并将二进制数据转为字符串。
+ * writeFile方法用于将字符串转为二进制数据并写入文件，可以选择追加或覆盖写入。
+ * transferFiles方法用于将文件从一个地方转移到另一个地方。
+ * copyLargeFile方法用于复制大文件。
+ */
 public enum FileRW {
 	UTF8("UTF-8"), GBK("GBK"), GB2312("GB2312"), GB18030("GB18030"), ISO88591("ISO-8859-1"), UTF16("UTF-16");
 

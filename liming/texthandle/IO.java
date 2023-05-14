@@ -93,7 +93,6 @@ public class IO {
                         try {
                             datas.wait();
                         } catch (InterruptedException e) {
-                            // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
                         // System.out.println("等待结束");
@@ -109,7 +108,6 @@ public class IO {
                         try {
                             future.get(time, TimeUnit.MILLISECONDS);
                         } catch (Exception e) {
-                            // TODO: handle exception
                             future.cancel(true);
                         }
                     });

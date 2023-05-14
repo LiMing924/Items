@@ -116,7 +116,6 @@ public class GUI extends JFrame implements ActionListener {
             try {
                 Thread.sleep((System.currentTimeMillis() - start_time) % gap);
             } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
                 // e.printStackTrace();
             }
         }
@@ -125,7 +124,7 @@ public class GUI extends JFrame implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == startButton) {
-            // TODO: 点击开始按钮后的逻辑
+
             try {
                 screenCapture.start();
                 start();
@@ -151,11 +150,9 @@ public class GUI extends JFrame implements ActionListener {
                     }
                 }).start();
             } catch (Exception e1) {
-                // TODO: handle exception
             }
 
         } else if (e.getSource() == stopButton) {
-            // TODO: 点击结束按钮后的逻辑
             screenCapture.stop();
             run = false;
         }

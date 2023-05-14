@@ -2,7 +2,6 @@ package liming.texthandle;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,16 +32,29 @@ class UDPDataTemps {
 		for (int i = 0; i < SIZE; i++) {
 			executors[i] = Executors.newFixedThreadPool(1);
 		}
-		myThread = new MyThread();
-		myThread.start();
 		lock = new Object();
 	}
 
+	/**
+	 * 添加数据
+	 * 
+	 * @param object
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
 	public Map<String, String> get(JSONObject object) throws InterruptedException, ExecutionException {
-
 		text("正在处理数据，map：", object);
 		text(Datas.keySet(), "添加数据=", object);
-		String key = object.optString(UDPData.keys.get(0));
+		UDPData data = new UDPData(interface1, object);
+		if (data.value()) {// 判断单个数据是否接收完,若接收完就直接返回结果
+			try {
+				return data.getData();
+			} finally {
+				data.clear();
+			}
+		}
+		String key = data.getID();
 		int i;
 		synchronized (lock) {
 			for (i = 0; i < SIZE; i++) {
@@ -70,50 +82,32 @@ class UDPDataTemps {
 			synchronized (lock) {
 				values[x] = key;
 			}
-			UDPData data;
-			int length = object.optInt(UDPData.keys.get(1));
+			UDPData data1;
 			if (Datas.containsKey(key)) {
 				text("已有记录：", key, "正在获取");
-				data = Datas.remove(key);
-				text(data);
+				data1 = new UDPData(Datas.remove(key), data);
+				text(data1);
 			} else {
-				text("首次接收：", key, "正在新建");
-				data = new UDPData(interface1, key, length);
+				data1 = data;
 			}
-			data.put(object);
 			synchronized (lock) {
 				values[x] = null;
 			}
-			if (data.value())
-				return data.getData();
+			if (data1.value())
+				try {
+					return data.getData();
+				} finally {
+					data.clear();
+				}
 			else {
-				Datas.put(key, data);
+				Datas.put(key, data1);
 				return null;
 			}
 		}).get();
 	}
 
-	@SuppressWarnings("all")
 	public void clear() {
 		Datas.clear();
-		expire = false;
-		{
-			long s = System.currentTimeMillis();
-			while (!expire_end) {
-				if (System.currentTimeMillis() >= s + IntervalTime * 2.5) {
-					break;
-				}
-				try {
-					Thread.sleep(50);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			if (!expire_end) {
-				text_Strong("超时数据处理线程终止异常");
-				myThread.stop();
-			}
-		}
 		int i = 1;
 		for (ExecutorService executor : executors) {
 			executor.shutdown();
@@ -130,6 +124,7 @@ class UDPDataTemps {
 				text(i++ + "未关闭");
 			}
 		}
+		text_Strong("数据处理结束");
 	}
 
 	private void text(Object... objects) {
@@ -180,47 +175,5 @@ class UDPDataTemps {
 			root.put("values", v);
 		}
 		return root;
-	}
-
-	// 查询是否过期
-	private MyThread myThread;
-	private boolean expire = true;
-	private boolean expire_end = false;
-	private long IntervalTime = 1 * 1000;
-
-	private class MyThread extends Thread {
-		@Override
-		public void run() {
-			text("超时数据处理功能已开启");
-			Random random = new Random();
-			while (expire) {
-				try {
-					MThread mThread = new MThread();
-					mThread.start();
-					mThread.join();
-					long time = random.nextInt((int) IntervalTime * 3 / 2) + IntervalTime / 2;
-					Thread.sleep(time);
-				} catch (InterruptedException e) {
-					continue;
-				}
-			}
-			expire_end = true;
-			text_Strong("超时数据处理已关闭");
-		}
-
-		class MThread extends Thread {
-			@Override
-			public void run() {
-				for (String key : Datas.keySet()) {
-					UDPData data = Datas.get(key);
-					if (data.getTime() + 100 * 1000 >= System.currentTimeMillis()) {
-						text("key= " + key + " 超时未收取完成，正在释放该数据 " + data);
-					}
-					if (!expire)
-						break;
-				}
-			}
-
-		}
 	}
 }

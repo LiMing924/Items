@@ -2,7 +2,7 @@ package liming.texthandle;
 
 import java.util.Arrays;
 
-import org.json.JSONObject;
+import liming.texthandle.UDPLongDataTemps.Data;
 
 class UDPLongData {
     private String longkey;
@@ -17,19 +17,30 @@ class UDPLongData {
         datas = new String[length];
     }
 
-    public JSONObject put(int num, String data) {
+    public UDPLongData add(UDPLongData data) {
+        text("单个长数据合并中", "合并前", Arrays.toString(values), " : ", Arrays.toString(data.values));
+        for (int i = 0; i < values.length; i++) {
+            if (data.values[i]) {
+                datas[i] = data.datas[i];
+                values[i] = data.values[i];
+            }
+        }
+        text("单个长数据合并完成", "合并后", Arrays.toString(values));
+
+        return this;
+    }
+
+    public Data put(int num, String data) {
         values[num] = true;
         datas[num] = data;
         text(this);
         if (value()) {
-            JSONObject value = new JSONObject();
-            value.put(longkey, getData());
-            return value;
+            return getData();
         }
         return null;
     }
 
-    private boolean value() {
+    public boolean value() {
         for (boolean b : values) {
             if (!b) {
                 return false;
@@ -42,7 +53,11 @@ class UDPLongData {
         return values;
     }
 
-    private String getData() {
+    public Data getData() {
+        return new Data(longkey, getdata());
+    }
+
+    private String getdata() {
         StringBuilder sb = new StringBuilder();
         for (String data : datas) {
             sb.append(data);

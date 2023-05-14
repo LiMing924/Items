@@ -33,13 +33,19 @@ public class HandleReceive {
 	private int dataSize = 512; // 默认接收区大小
 	private static boolean debug = false; // 默认关闭调试模式
 	private static int sendSpeed = 10; // 默认发送端处理速度
-	private int handlesize;
-	private static BlockingQueue<DatagramPacket> bufferPool;
+	private int handlesize;// bufferPool成员的个数
+	private BlockingQueue<DatagramPacket> bufferPool;
+	private boolean running = false;
 
 	private Text text;
 
 	public Text getText() {
 		return text;
+	}
+
+	public HandleReceive(GetDataAndPacket gdap) {
+		this.gdap = gdap;
+		sockets = new ArrayList<>();
 	}
 
 	/**
@@ -99,18 +105,39 @@ public class HandleReceive {
 		}
 	}
 
+	/**
+	 * 添加端口号
+	 * 
+	 * @param socket
+	 */
+
 	public void addSocket(DatagramSocket socket) {
-		this.sockets.add(socket);
+		if (sockets.size() < 1) {
+			setPort(socket.getLocalPort());
+		}
+		sockets.add(socket);
 		try {
 			if (socket.getReceiveBufferSize() > dataSize) {
+				int size = dataSize;
 				setDataSize(socket.getReceiveBufferSize());
+				gdap.writeLog("datasize发生改变：" + size + " -> " + dataSize);
 			}
 		} catch (Exception e) {
 		}
 	}
 
+	/**
+	 * 获取DatagramSocket列表
+	 */
 	public List<DatagramSocket> getSockets() {
 		return sockets;
+	}
+
+	/**
+	 * 获取 debug 状态
+	 */
+	public boolean getDebug() {
+		return debug;
 	}
 
 	/**
@@ -145,8 +172,19 @@ public class HandleReceive {
 
 	/**
 	 * 启动接收和发送线程池
+	 * 
+	 * @throws Exception
 	 */
 	public void start() {
+		if (sockets.size() < 1) {
+			gdap.writeStrongLog(FileRW.getError(new Exception("未指定socket,启动失败")));
+			return;
+		}
+		if (running) {
+			gdap.writeStrongLog(new Exception("已在运行中,启动失败"));
+			return;
+		}
+		running = true;
 		text = new Text(gdap, sockets.size());
 		text.setDataSize(dataSize);
 		gdap.writeLog("发送线程池设置值=" + sendSpeed + ",处理线程池中等待加入的sockets个数为=" + sockets.size());
@@ -162,7 +200,7 @@ public class HandleReceive {
 		receivePool.execute(() -> {
 			for (DatagramSocket socket : sockets) {
 				receivePool.execute(() -> {
-					while (true) {
+					while (running) {
 						try {
 							DatagramPacket packet = bufferPool.take();
 							packet.setData(new byte[dataSize], 0, dataSize);
@@ -196,6 +234,10 @@ public class HandleReceive {
 	 * 关闭接收和发送线程池
 	 */
 	public void stop() {
+		if (!running) {
+			gdap.writeStrongLog(new Exception("未启动,停止失败"));
+		}
+		running = false;
 		for (DatagramSocket socket : sockets) {
 			socket.close();
 		}

@@ -42,7 +42,7 @@ public class ScreenCapture {
         return mScreen.getGap();
     }
 
-    public void start() throws IOException {
+    public void start() {
         mScreen = new MScreen();
         // 创建一个IOData对象，用于接收截屏数据
         IOData ioData = new IOData() {

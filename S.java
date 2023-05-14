@@ -2,6 +2,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -15,67 +16,99 @@ public class S {
     IO.IOScreen ioscreen;
     long rn = 0;
 
+    ScreenCapture screenCapture;
+
+    private float quality = 0.1f;// 设置图片的压缩比
+    private String code = "jpg";// 设置图片格式
+    private float factor = 0.2f;// 获取时为避免线程过多性能衰减，设置在同时运行的线程数，占帧率的百分比
+    private int frame = 15;// 帧率
+    private float buffer = 0f;// 与一秒比较，缓冲的大小
+
     public static void main(String[] args) {
         try {
             new S();
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
 
     public S() throws SocketException {
 
-        IO.IOData iod = new IO.IOData() {
-            private long lastTime = System.currentTimeMillis();
-            private int frameCount = 0;
-
-            private void updateFPS() {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastTime >= 1000) {
-                    int fps = (int) (frameCount * 1000 / (currentTime - lastTime));
-                    System.out.print("\r" + fps + " fps " + rn);
-                    lastTime = currentTime;
-                    frameCount = 0;
-                }
-            }
-
-            @Override
-            public void getByte(long time, byte[] data) {
-                picture = RSA_Encryption.signatureToString(data);
-                frameCount++;
-                updateFPS();
-            }
-        };
-        iod.setTime(1 * 1000, 30);
-        ioscreen = IO.getScreen(iod, 0.5f, "jpg", 0.2f);
-        ioscreen.start();
+        screenCapture = new ScreenCapture(quality, code, factor, frame, buffer);
+        screenCapture.start();
+        long gap = screenCapture.getGap();
+        // HandleReceive.setDebug(true);
 
         receive = new HandleReceive(new GetDataAndPacket() {
 
             @Override
             public void sendDataToClient(Map<String, String> data, InetAddress address, int port,
                     DatagramSocket socket) {
+
+                System.out.println("获取数据: " + data);
                 rn++;
-                data = new HashMap<>();
-                String p = picture;
-                data.put("picture", p);
+                int sleep;
+                long now_time;
                 try {
-                    receive.send(data, address, port, socket);
-                } catch (InterruptedException | ExecutionException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    sleep = Integer.parseInt(data.get("sleep"));
+                } catch (Exception e) {
+                    sleep = 0;
                 }
+                try {
+                    now_time = Long.parseLong(data.get("now"));
+                } catch (Exception e) {
+                    now_time = System.currentTimeMillis();
+                }
+                System.out.println(now_time + "  " + sleep);
+                if (sleep >= (1 + buffer) * 1000 - 2 * gap)
+                    sleep = 500;
+                if (sleep <= gap)
+                    sleep = (int) gap + 20;
+                long now = now_time;
+                long gettime = sleep;
+                System.out.println(now + "  " + gettime);
+                new Thread(() -> {
+                    List<byte[]> bytes = null;
+                    while (bytes == null || bytes.size() <= 1) {
+                        bytes = screenCapture.get(now, gettime);
+                    }
+                    System.out.println("处理发送中 " + bytes.size());
+                    Map<String, String> d = new HashMap<>();
+                    int i = 0;
+                    for (byte[] b : bytes) {
+                        i++;
+                        if (b == null) {
+                            d.put("p_" + i, "null");
+                        } else {
+                            try {
+                                String p = RSA_Encryption.signatureToString(b);
+                                d.put("p_" + i, p);
+                            } catch (Exception e) {
+                                d.put("p_" + i, "null");
+                            }
+                        }
+                    }
+                    d.put("now", now + "");
+                    d.put("size", bytes.size() + "");
+                    try {
+                        receive.send(d, address, port, socket);
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    // receive.stop();
+                    // screenCapture.stop();
+                }).start();
+
             }
 
             @Override
             public void writeLog(Object message) {
-                // System.out.println(message);
+                System.out.println("writeLog: " + message);
             }
 
             @Override
             public void writeStrongLog(Object message) {
-                System.out.println(message);
+                System.out.println("writeStrongLog: " + message);
             }
 
             @Override

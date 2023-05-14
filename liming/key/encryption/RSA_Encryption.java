@@ -15,6 +15,28 @@ import java.util.Random;
 
 import javax.crypto.Cipher;
 
+/**
+ * RSA_Encryption类实现了RSA加密算法的公钥和私钥生成、加密、解密、签名和验证等功能。</br>
+ * 
+ * 提供了以下方法：
+ * 1. 构造方法：RSA_Encryption()和RSA_Encryption(int size)。
+ * 2. getKeyPairGenerator()：获取KeyPairGenerator对象，用于生成公钥和私钥对。
+ * 3. getKeyPair()：获取KeyPair对象，包含公钥和私钥。
+ * 4. getPublicKey()：获取公钥。
+ * 5. getPrivateKey()：获取私钥。
+ * 6. encrypt(String str, PrivateKey privateKey)：使用私钥对输入字符串进行签名。
+ * 7. encode(String str, PublicKey publicKey)：使用公钥对明文进行加密。
+ * 8. decode(byte[] bytes, PrivateKey privateKey)：使用私钥对密文进行解密。
+ * 9. signatureToString(byte[] signature)：将签名转换为字符串。
+ * 10. stringToSignature(String signatureString)：将字符串表示的签名转换为字节数组。
+ * 11. decrypt(String str, byte[] signature, PublicKey
+ * publicKey)：使用公钥对输入字符串进行验证。
+ * 12. KeyToString(PublicKey publicKey)：将公钥转换为字符串格式。
+ * 13. KeyToString(PrivateKey privateKey)：将私钥转换为字符串格式。
+ * 14. stringToPublicKey(String publicKeyString)：将字符串格式的公钥转换为公钥对象。
+ * 15. stringToPrivateKey(String privateKeyString)：将字符串格式的私钥转换为私钥对象。
+ * 16. generate(int length)：生成指定长度的随机字符串。
+ */
 public class RSA_Encryption {
 	public KeyPairGenerator keyPairGenerator;
 	public KeyPair keyPair;
@@ -23,13 +45,17 @@ public class RSA_Encryption {
 	public int key_size = 2048;
 
 	public RSA_Encryption() {
-
 	}
 
 	public RSA_Encryption(int size) {
 		key_size = size;
 	}
 
+	/**
+	 * 获取KeyPairGenerator对象，用于生成公钥和私钥对。
+	 * 
+	 * @return KeyPairGenerator对象
+	 */
 	public KeyPairGenerator getKeyPairGenerator() {
 		if (keyPairGenerator == null)
 			try {
@@ -42,18 +68,33 @@ public class RSA_Encryption {
 		return keyPairGenerator;
 	}
 
+	/**
+	 * 获取KeyPair对象，包含公钥和私钥。
+	 * 
+	 * @return KeyPair对象
+	 */
 	public KeyPair getKeyPair() {
 		if (keyPair == null)
 			keyPair = getKeyPairGenerator().generateKeyPair();
 		return keyPair;
 	}
 
+	/**
+	 * 获取公钥。
+	 * 
+	 * @return 公钥
+	 */
 	public PublicKey getPublicKey() {
 		if (publicKey == null)
 			publicKey = getKeyPair().getPublic();
 		return publicKey;
 	}
 
+	/**
+	 * 获取私钥。
+	 * 
+	 * @return 私钥
+	 */
 	public PrivateKey getPrivateKey() {
 		if (privateKey == null)
 			privateKey = getKeyPair().getPrivate();
@@ -65,7 +106,8 @@ public class RSA_Encryption {
 	private static final Random RANDOM = new Random();
 
 	/**
-	 * 使用私钥对输入字符串进行签名
+	 * 
+	 * 使用私钥对输入字符串进行签名。
 	 * 
 	 * @param str        输入字符串
 	 * @param privateKey 私钥
@@ -209,6 +251,13 @@ public class RSA_Encryption {
 		return privateKey;
 	}
 
+	/**
+	 * 
+	 * 生成指定长度的随机字符串。
+	 * 
+	 * @param length 字符串长度
+	 * @return 随机字符串
+	 */
 	public static String generate(int length) {
 		StringBuilder sb = new StringBuilder(length);
 		for (int i = 0; i < length; i++) {
