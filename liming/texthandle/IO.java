@@ -1,10 +1,8 @@
 package liming.texthandle;
 
 import java.awt.Rectangle;
-// import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
-// import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -24,7 +22,7 @@ import javax.imageio.stream.ImageOutputStream;
 
 public class IO {
     public static abstract class IOData {
-        public abstract void getByte(long time, byte[] data);
+        public abstract void getImage(long time, BufferedImage image);
 
         private long time = 1 * 1000 / 30;
 
@@ -47,8 +45,8 @@ public class IO {
         private volatile boolean running = true;
         private State state;
         private IOData io;
-        private String code;
-        private float quality;
+        private String code;// 设置图片格式
+        private float quality;// 设置图片的压缩比
         private long time;
 
         private IOScreen(IOData io, float quality, String code, float factor) {
@@ -62,6 +60,21 @@ public class IO {
 
         public static IOScreen getScreen(IOData io, float quality, String code, float factor) {
             return new IOScreen(io, quality, code, factor);
+        }
+
+        public byte[] compressImage(BufferedImage image) throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(code);
+            ImageWriter writer = writers.next();
+            ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(quality);
+            ImageOutputStream ios = ImageIO.createImageOutputStream(baos);
+            writer.setOutput(ios);
+            writer.write(null, new IIOImage(image, null, null), param);
+            ios.close();
+            writer.dispose();
+            return baos.toByteArray();
         }
 
         public void start() {
@@ -86,7 +99,7 @@ public class IO {
                                 continue;
                             new Thread(() -> {
                                 // System.out.println("截图数据回传");
-                                io.getByte(data.time, data.bytes);
+                                io.getImage(data.time, data.image);
                             }).start();
                         }
                         // System.out.println("截图数据暂时处理完毕,进入等待");
@@ -148,11 +161,11 @@ public class IO {
 
         private class Data {
             long time;
-            byte[] bytes;
+            BufferedImage image;
 
-            private Data(long time, byte[] bytes) {
+            private Data(long time, BufferedImage image) {
                 this.time = time;
-                this.bytes = bytes;
+                this.image = image;
             }
         }
 
@@ -192,8 +205,7 @@ public class IO {
                     Robot robot = new Robot();
                     Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
                     BufferedImage screenCapture = robot.createScreenCapture(screenRect);
-                    byte[] bytes = compressImage(screenCapture, quality);
-                    add(new Data(time, bytes));
+                    add(new Data(time, screenCapture));
                 } catch (Exception e) {
                 } finally {
                     synchronized (state) {
@@ -201,21 +213,6 @@ public class IO {
                     }
                 }
 
-            }
-
-            private byte[] compressImage(BufferedImage image, float quality) throws IOException {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(code);
-                ImageWriter writer = writers.next();
-                ImageWriteParam param = writer.getDefaultWriteParam();
-                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                param.setCompressionQuality(quality);
-                ImageOutputStream ios = ImageIO.createImageOutputStream(baos);
-                writer.setOutput(ios);
-                writer.write(null, new IIOImage(image, null, null), param);
-                ios.close();
-                writer.dispose();
-                return baos.toByteArray();
             }
 
         }

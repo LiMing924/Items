@@ -1,10 +1,8 @@
-import javax.imageio.ImageIO;
 import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +12,7 @@ public class GUI extends JFrame implements ActionListener {
     private ImageIcon imageIcon;
     private BufferedImage bufferImage;
     private ScreenCapture screenCapture;
-    private List<byte[]> datas;
+    private List<BufferedImage> datas;
 
     private float quality = 0.5f;// 设置图片的压缩比
     private String code = "jpg";// 设置图片格式
@@ -70,12 +68,18 @@ public class GUI extends JFrame implements ActionListener {
                     datas = screenCapture.get(System.currentTimeMillis(), getTime);
                     fpsLabel.setText(screenCapture.getFps() + " fps");
                 }
+                try {
+                    Thread.sleep(getTime / 2);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
         }).start();
     }
 
     private void Show() {
-        List<byte[]> datas;
+        List<BufferedImage> datas;
         synchronized (key) {
             if (this.datas == null)
                 return;
@@ -88,9 +92,7 @@ public class GUI extends JFrame implements ActionListener {
             int num = (int) (now_time - start_time) / gap;
             if (num == i)
                 try {
-                    ByteArrayInputStream bis = new ByteArrayInputStream(datas.get(i));
-                    BufferedImage image = ImageIO.read(bis);
-                    bis.close();
+                    BufferedImage image = datas.get(i);
                     // 创建双缓冲区
                     if (bufferImage == null) {
                         bufferImage = new BufferedImage(image.getWidth(), image.getHeight(),

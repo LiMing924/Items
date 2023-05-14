@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.awt.image.BufferedImage;
 
 import liming.key.encryption.RSA_Encryption;
 import liming.texthandle.GetDataAndPacket;
@@ -68,20 +69,20 @@ public class S {
                 long gettime = sleep;
                 System.out.println(now + "  " + gettime);
                 new Thread(() -> {
-                    List<byte[]> bytes = null;
+                    List<BufferedImage> bytes = null;
                     while (bytes == null || bytes.size() <= 1) {
                         bytes = screenCapture.get(now, gettime);
                     }
                     System.out.println("处理发送中 " + bytes.size());
                     Map<String, String> d = new HashMap<>();
                     int i = 0;
-                    for (byte[] b : bytes) {
+                    for (BufferedImage b : bytes) {
                         i++;
                         if (b == null) {
                             d.put("p_" + i, "null");
                         } else {
                             try {
-                                String p = RSA_Encryption.signatureToString(b);
+                                String p = RSA_Encryption.signatureToString(screenCapture.getImgByte(b));
                                 d.put("p_" + i, p);
                             } catch (Exception e) {
                                 d.put("p_" + i, "null");

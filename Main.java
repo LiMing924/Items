@@ -1,7 +1,6 @@
 import java.awt.AWTException;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -21,7 +20,7 @@ public class Main {
         long time = 1000;
         int size = (int) Math.ceil(frame * (time / 2000));
         int fps = (int) Math.ceil(frame * 0.6);
-        List<byte[]> datas = null;
+        List<BufferedImage> datas = null;
         while (datas == null || datas.size() < size) {
             if (screenCapture.getFps() < fps)
                 continue;
@@ -32,12 +31,10 @@ public class Main {
         BufferedImage bufferImage = null;
 
         for (int i = 0; i < datas.size(); i++) {
-            byte[] data = datas.get(i);
-            if (data == null || data.length == 0)
+            BufferedImage data = datas.get(i);
+            if (data == null)
                 continue;
-            ByteArrayInputStream bis = new ByteArrayInputStream(data);
-            BufferedImage image = ImageIO.read(bis);
-            bis.close();
+            BufferedImage image = datas.get(i);
             // 创建双缓冲区
             if (bufferImage == null) {
                 bufferImage = new BufferedImage(image.getWidth(), image.getHeight(),

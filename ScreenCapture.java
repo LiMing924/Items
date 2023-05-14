@@ -1,3 +1,4 @@
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,10 @@ public class ScreenCapture {
         return mScreen.getGap();
     }
 
+    public byte[] getImgByte(BufferedImage image) throws IOException {
+        return ioscreen.compressImage(image);
+    }
+
     public void start() {
         mScreen = new MScreen();
         // 创建一个IOData对象，用于接收截屏数据
@@ -61,10 +66,10 @@ public class ScreenCapture {
             }
 
             @Override
-            public void getByte(long time, byte[] data) {
+            public void getImage(long time, BufferedImage image) {
                 // 将截屏数据添加到MScreen对象中
                 System.out.print("\r" + Fps + " fps  " + length);
-                mScreen.add(time, data);
+                mScreen.add(time, image);
                 frameCount++;
                 updateFPS();
             }
@@ -82,7 +87,7 @@ public class ScreenCapture {
     }
 
     // 传入需获取的时间结点，返回
-    public List<byte[]> get(long now_time, long get_time) {
+    public List<BufferedImage> get(long now_time, long get_time) {
         try {
             // 获取截屏数据并将其转换为视频
             return mScreen.get(now_time, get_time);
@@ -111,9 +116,9 @@ public class ScreenCapture {
             return gap;
         }
 
-        public byte[] add(long time, byte[] data) {
-            length = data.length;
-            Time_Data time_Data = new Time_Data(time, data);
+        public BufferedImage add(long time, BufferedImage image) {
+            length = image.getHeight() * image.getWidth();
+            Time_Data time_Data = new Time_Data(time, image);
             lock.lock();
             try {
                 if (datas.size() == 0) {
@@ -133,10 +138,10 @@ public class ScreenCapture {
             } finally {
                 lock.unlock();
             }
-            return data;
+            return image;
         }
 
-        public List<byte[]> get(long now_time, long get_time) throws IOException {
+        public List<BufferedImage> get(long now_time, long get_time) throws IOException {
             List<Time_Data> copy;
             lock.lock();
             copy = new ArrayList<>(datas);
@@ -145,30 +150,30 @@ public class ScreenCapture {
                 System.out.print("\r缓冲为空");
                 return null;
             }
-            List<byte[]> datas = new ArrayList<>();
+            List<BufferedImage> datas = new ArrayList<>();
             for (Time_Data data : copy) {
                 if (data.getStartSerial() > (now_time - start_time) / gap + 1)
                     break;
                 if (data.getStartSerial() < (now_time - get_time - start_time) / gap - 1)
                     continue;
-                datas.add(data.getData());
+                datas.add(data.getImage());
             }
             return datas;
         }
 
         private class Time_Data {
             private long time;
-            private byte[] data;
+            private BufferedImage image;
             private long num;
 
-            public Time_Data(long time, byte[] data) {
-                this.data = data;
+            public Time_Data(long time, BufferedImage image) {
+                this.image = image;
                 this.time = time;
                 num = 0;
             }
 
-            public byte[] getData() {
-                return data;
+            public BufferedImage getImage() {
+                return image;
             }
 
             // // 判断截屏数据是否过期
@@ -193,7 +198,8 @@ public class ScreenCapture {
 
             @Override
             public String toString() {
-                return "Time_Data [time=" + time + ", data=" + (data == null ? null : data.length) + ", num=" + num
+                return "Time_Data [time=" + time + ", data="
+                        + (image == null ? null : image.getHeight() * image.getWidth()) + ", num=" + num
                         + ", serial=" + getSerial() + "]";
             }
 
