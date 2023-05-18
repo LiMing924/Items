@@ -1,5 +1,6 @@
 package liming.texthandle;
 
+import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
@@ -41,7 +42,7 @@ public class IO {
      */
     public static class IOScreen {
         private ExecutorService executorService;
-        private Thread thread;
+        private Thread getThread;
         private volatile boolean running = true;
         private State state;
         private IOData io;
@@ -79,8 +80,8 @@ public class IO {
 
         public void start() {
             running = true;
-            if (thread != null && !thread.isAlive()) {
-                thread.interrupt();
+            if (getThread != null && !getThread.isAlive()) {
+                getThread.interrupt();
             }
 
             if (addThread != null && !addThread.isAlive()) {
@@ -89,49 +90,9 @@ public class IO {
 
             datas = new ArrayList<>();
 
-            addThread = new Thread(() -> {
-                synchronized (datas) {
-                    while (running) {
-                        // System.out.println("轮回处理截图数据");
-                        while (datas.size() > 0) {
-                            Data data = datas.remove(0);
-                            if (data.time < System.currentTimeMillis() - time * 2)
-                                continue;
-                            new Thread(() -> {
-                                // System.out.println("截图数据回传");
-                                io.getImage(data.time, data.image);
-                            }).start();
-                        }
-                        // System.out.println("截图数据暂时处理完毕,进入等待");
-                        try {
-                            datas.wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        // System.out.println("等待结束");
-                    }
-                }
-            });
-
-            thread = new Thread(() -> {
-                long StartTime = System.currentTimeMillis();
-                while (running) {
-                    Future<?> future = executorService.submit(new MRunnable());
-                    executorService.execute(() -> {
-                        try {
-                            future.get(time, TimeUnit.MILLISECONDS);
-                        } catch (Exception e) {
-                            future.cancel(true);
-                        }
-                    });
-                    try {
-                        Thread.sleep(io.time - (System.currentTimeMillis() - StartTime) % io.time);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            thread.start();
+            addThread = new Thread(new AddRunnable());
+            getThread = new Thread(new GetRunnable());
+            getThread.start();
             addThread.start();
             System.out.println("已启动1");
         }
@@ -169,6 +130,55 @@ public class IO {
             }
         }
 
+        class AddRunnable implements Runnable {
+            public void run() {
+                synchronized (datas) {
+                    while (running) {
+                        // System.out.println("轮回处理截图数据");
+                        while (!datas.isEmpty()) {
+                            Data data = datas.remove(0);
+                            if (data.time < System.currentTimeMillis() - time * 2)
+                                continue;
+                            new Thread(() -> {
+                                // System.out.println("截图数据回传");
+                                io.getImage(data.time, data.image);
+                            }).start();
+                        }
+                        // System.out.println("截图数据暂时处理完毕,进入等待");
+                        try {
+                            datas.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        // System.out.println("等待结束");
+                    }
+                }
+            };
+        };
+
+        private Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
+
+        class GetRunnable implements Runnable {
+            public void run() {
+                long StartTime = System.currentTimeMillis();
+                while (running) {
+                    Future<?> future = executorService.submit(new MRunnable());
+                    executorService.execute(() -> {
+                        try {
+                            future.get(time, TimeUnit.MILLISECONDS);
+                        } catch (Exception e) {
+                            future.cancel(true);
+                        }
+                    });
+                    try {
+                        Thread.sleep(io.time - (System.currentTimeMillis() - StartTime) % io.time);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
         private class State {
             private long num;
             private long max;
@@ -203,7 +213,7 @@ public class IO {
                     }
                     long time = System.currentTimeMillis();
                     Robot robot = new Robot();
-                    Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                    Rectangle screenRect = new Rectangle(dimension);
                     BufferedImage screenCapture = robot.createScreenCapture(screenRect);
                     add(new Data(time, screenCapture));
                 } catch (Exception e) {

@@ -112,11 +112,8 @@ public enum FileRW {
 		return sw.toString();
 	}
 
-	// 读取文件并将二进制数据转为字符串
-	public static String readFile(String filePath) {
-		String result = "";
+	public static byte[] readFile(File file) {
 		try {
-			File file = new File(filePath);
 			if (file.length() > Integer.MAX_VALUE) {
 				System.out.println("文件大小超过限制" + file.length() + ":" + Integer.MAX_VALUE
 						+ "，若本地复制文件请使用transferFiles(oldfilepath,newfilepath)");
@@ -126,10 +123,18 @@ public enum FileRW {
 			byte[] data = new byte[(int) file.length()];
 			fis.read(data);
 			fis.close();
-			result = RSA_Encryption.signatureToString(data);
-		} catch (IOException e) {
-			e.printStackTrace();
+			return data;
+		} catch (Exception e) {
+			System.out.println(getError(e));
+			return null;
 		}
+	}
+
+	// 读取文件并将二进制数据转为字符串
+	public static String readFile(String filePath) {
+		String result = "";
+		File file = new File(filePath);
+		result = RSA_Encryption.signatureToString(readFile(file));
 		return result;
 	}
 

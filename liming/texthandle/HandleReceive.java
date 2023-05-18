@@ -34,6 +34,7 @@ public class HandleReceive {
 	private static boolean debug = false; // 默认关闭调试模式
 	private static int sendSpeed = 10; // 默认发送端处理速度
 	private int handlesize;// bufferPool成员的个数
+	private int handlesize_ratio = 1024; // bufferPool 系数
 	private BlockingQueue<DatagramPacket> bufferPool;
 	private boolean running = false;
 
@@ -140,6 +141,10 @@ public class HandleReceive {
 		return debug;
 	}
 
+	public int getDataSize() {
+		return dataSize - 162;
+	}
+
 	/**
 	 * 设置端口号
 	 */
@@ -151,8 +156,11 @@ public class HandleReceive {
 	 * 设置接收区大小
 	 */
 	public void setDataSize(int dataSize) {
-		this.dataSize = dataSize;
-		text.setDataSize(dataSize);
+		if (text != null) {
+			this.dataSize = text.setDataSize(dataSize) + 162;
+		} else
+			this.dataSize = dataSize;
+		gdap.writeLog("DataSize发生改变: " + dataSize + " -> " + this.dataSize);
 	}
 
 	/**
@@ -186,12 +194,12 @@ public class HandleReceive {
 		}
 		running = true;
 		text = new Text(gdap, sockets.size());
-		text.setDataSize(dataSize);
+		setDataSize(dataSize);
 		gdap.writeLog("发送线程池设置值=" + sendSpeed + ",处理线程池中等待加入的sockets个数为=" + sockets.size());
 		sendPool = Executors.newFixedThreadPool(sendSpeed); // 初始化发送线程池
-		handlesize = sockets.size() * (dataSize / 512) * 2048;// 设置缓冲区大小为socket个数*单个缓冲区大小除以512字节取整的2048倍
+		handlesize = sockets.size() * (dataSize / 512) * handlesize_ratio;// 设置缓冲区大小为socket个数*单个缓冲区大小除以512字节取整的2048倍
 		if (handlesize == 0)
-			handlesize = 2048;
+			handlesize = handlesize_ratio;
 		bufferPool = new ArrayBlockingQueue<>(handlesize);
 		for (int i = 0; i < handlesize; i++) {
 			bufferPool.offer(new DatagramPacket(new byte[dataSize], dataSize));
@@ -268,10 +276,12 @@ public class HandleReceive {
 			try {
 				boolean state = text.Send(map, InetAddress.getByName(ip), port, socket);
 				return state;
+			} catch (NullPointerException e) {
+				gdap.writeStrongLog("服务器未启动");
 			} catch (IOException e) {
 				gdap.writeLog(e);
-				return false;
 			}
+			return false;
 		}).get();
 	}
 

@@ -93,7 +93,7 @@ public class Text {
 	 */
 	public int setDataSize(int size) {
 		if (size <= 180)
-			size = 180;
+			size += 180;
 		return DATASIZE = size - 162;
 	}
 

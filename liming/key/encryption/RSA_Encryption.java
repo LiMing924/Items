@@ -163,6 +163,8 @@ public class RSA_Encryption {
 	 */
 
 	public static String signatureToString(byte[] signature) {
+		if (signature == null)
+			return "";
 		return Base64.getEncoder().encodeToString(signature);
 	}
 

@@ -1,7 +1,9 @@
 package liming.texthandle;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,8 +18,12 @@ class UDPDataTemps {
 	private int SIZE = 5;// 默认线程池个数
 	private ExecutorService[] executors;
 	private UDP_Interface interface1;
-	private String[] values;// 正在处理的参数列表
-	private Object lock;
+	private Map<String, Integer> valuesRun;// 关键字所在的处理线程池序号
+	private int[] valuesWait; // 线程池待处理的关键字
+	private boolean running;
+	private Thread timeOutThread;
+
+	private long timeOutAll = 100 * 1000, timeout = 5 * 1000;
 
 	public UDPDataTemps(UDP_Interface interface1) {
 		this(interface1, 5);
@@ -28,11 +34,37 @@ class UDPDataTemps {
 		this.interface1 = interface1;
 		this.SIZE = size;
 		executors = new ExecutorService[SIZE];
-		values = new String[SIZE];
+		valuesRun = new ConcurrentHashMap<>();
+		valuesWait = new int[SIZE];
 		for (int i = 0; i < SIZE; i++) {
 			executors[i] = Executors.newFixedThreadPool(1);
+			valuesWait[i] = 0;
 		}
-		lock = new Object();
+		running = true;
+		timeOutThread = new Thread(new TimeOutRunnble());
+		timeOutThread.start();
+	}
+
+	private class TimeOutRunnble implements Runnable {
+		@Override
+		public void run() {
+			while (running) {
+				synchronized (Datas) {
+					for (String key : Datas.keySet()) {
+						if (Datas.get(key).isTimeOut(timeOutAll, timeout)) {
+							UDPData data = Datas.remove(key);
+							interface1.udp_slog("接收超时 " + data.getID() + " " + new Date(data.getStartTime()) + " "
+									+ new Date(data.getLastTime()) + " " + data.getGiatus());
+						}
+					}
+					try {
+						Datas.wait(timeout / 2);
+					} catch (Exception e) {
+						interface1.udp_log(FileRW.getError(e));
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -51,54 +83,62 @@ class UDPDataTemps {
 			return data.getData();
 		}
 		String key = data.getID();
-		int i;
-		synchronized (lock) {
-			for (i = 0; i < SIZE; i++) {
-				if (values[i] != null && values[i].equals(key)) {
-					break;
-				}
-			}
 
-			if (i == SIZE) {
-				int[] handle = new int[SIZE];
-				for (int j = 0; j < SIZE; j++) {
-					ThreadPoolExecutor threadPoolExecutor = (ThreadPoolExecutor) executors[j];
-					handle[j] = threadPoolExecutor.getQueue().size();
-				}
+		int i = -1;
+
+		/* 获取当前key在缓冲列表位置，若存在则加入，若不存在则计算最小的那个缓冲位置 */
+		synchronized (valuesRun) {
+			if (valuesRun.containsKey(key)) {
+				i = valuesRun.get(key).intValue();
+			} else {
 				i = 0;
-				for (int j = 1; j < handle.length; j++) {
-					if (handle[j] < handle[i]) {
-						i = j;
-					}
+				for (int n = 0; n < SIZE; n++) {
+					if (valuesWait[i] > valuesWait[n])
+						i = n;
 				}
 			}
+			valuesWait[i]++;
 		}
+		/* 计算结束 */
+
 		final int x = i;
 		return executors[x].submit(() -> {
-			synchronized (lock) {
-				values[x] = key;
-			}
-			UDPData data1;
-			if (Datas.containsKey(key)) {
-				text("已有记录：", key, "正在获取");
-				data1 = new UDPData(Datas.remove(key), data);
-				text(data1);
-			} else {
-				data1 = data;
-			}
-			synchronized (lock) {
-				values[x] = null;
-			}
-			if (data1.value())
-				return data.getData();
-			else {
-				Datas.put(key, data1);
-				return null;
+			try {
+				UDPData d = putData(key, data);
+				if (d != null && d.value()) {
+					valuesRun.remove(key);
+					return d.getData();
+				} else
+					return null;
+			} finally {
+				valuesWait[x]--;
 			}
 		}).get();
 	}
 
+	private UDPData putData(String key, UDPData new_data) {
+		long start = System.currentTimeMillis();
+		synchronized (Datas) {
+			if (Datas.containsKey(key)) {
+				UDPData data = Datas.remove(key);
+				data.add(new_data);
+				if (data.value()) {
+					return data;
+				} else
+					Datas.put(key, data);
+			} else {
+				System.out.println("未有记录");
+				Datas.put(key, new_data);
+			}
+		}
+		long end = System.currentTimeMillis();
+		System.out.print("\r" + (end - start) + "\t");
+		return null;
+	}
+
 	public void clear() {
+		running = false;
+		timeOutThread.interrupt();
 		Datas.clear();
 		int i = 1;
 		for (ExecutorService executor : executors) {
@@ -151,14 +191,13 @@ class UDPDataTemps {
 	private JSONObject getStatePool() {
 		JSONObject root = new JSONObject();
 		{
-			String[] vs = this.values.clone();
 			ExecutorService[] es = executors.clone();
 			JSONArray v = new JSONArray();
 			for (int i = 0; i < SIZE; i++) {
 				ThreadPoolExecutor executor = (ThreadPoolExecutor) es[i];
 				JSONObject o = new JSONObject();
 				o.put("num", i);
-				o.put("handle", vs[i] == null ? "null" : vs[i]);// 正在处理的key
+				// o.put("handle", vs[i] == null ? "null" : vs[i]);// 正在处理的key
 				o.put("wait", executor.getQueue().size());// 等待个数
 				o.put("complete", executor.getCompletedTaskCount());// 已完成个数
 				o.put("running ", executor.getActiveCount());// 正在运行个数
