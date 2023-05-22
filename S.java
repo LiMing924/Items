@@ -1,16 +1,12 @@
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.awt.image.BufferedImage;
-
-import liming.key.encryption.RSA_Encryption;
 import liming.texthandle.GetDataAndPacket;
 import liming.texthandle.HandleReceive;
 import liming.texthandle.IO;
+import liming.texthandle.ReceiveMap;
 
 public class S {
     public String picture;
@@ -19,11 +15,11 @@ public class S {
 
     ScreenCapture screenCapture;
 
-    private float quality = 0.1f;// 设置图片的压缩比
+    private float quality = 0.5f;// 设置图片的压缩比
     private String code = "jpg";// 设置图片格式
     private float factor = 0.2f;// 获取时为避免线程过多性能衰减，设置在同时运行的线程数，占帧率的百分比
-    private int frame = 15;// 帧率
-    private float buffer = 0f;// 与一秒比较，缓冲的大小
+    private int frame = 24;// 帧率
+    private float buffer = 1f;// 与一秒比较，缓冲的大小
 
     public static void main(String[] args) {
         try {
@@ -43,66 +39,6 @@ public class S {
         receive = new HandleReceive(new GetDataAndPacket() {
 
             @Override
-            public void sendDataToClient(Map<String, String> data, InetAddress address, int port,
-                    DatagramSocket socket) {
-
-                System.out.println("获取数据: " + data);
-                rn++;
-                int sleep;
-                long now_time;
-                try {
-                    sleep = Integer.parseInt(data.get("sleep"));
-                } catch (Exception e) {
-                    sleep = 0;
-                }
-                try {
-                    now_time = Long.parseLong(data.get("now"));
-                } catch (Exception e) {
-                    now_time = System.currentTimeMillis();
-                }
-                System.out.println(now_time + "  " + sleep);
-                if (sleep >= (1 + buffer) * 1000 - 2 * gap)
-                    sleep = 500;
-                if (sleep <= gap)
-                    sleep = (int) gap + 20;
-                long now = now_time;
-                long gettime = sleep;
-                System.out.println(now + "  " + gettime);
-                new Thread(() -> {
-                    List<BufferedImage> bytes = null;
-                    while (bytes == null || bytes.size() <= 1) {
-                        bytes = screenCapture.get(now, gettime);
-                    }
-                    System.out.println("处理发送中 " + bytes.size());
-                    Map<String, String> d = new HashMap<>();
-                    int i = 0;
-                    for (BufferedImage b : bytes) {
-                        i++;
-                        if (b == null) {
-                            d.put("p_" + i, "null");
-                        } else {
-                            try {
-                                String p = RSA_Encryption.signatureToString(screenCapture.getImgByte(b));
-                                d.put("p_" + i, p);
-                            } catch (Exception e) {
-                                d.put("p_" + i, "null");
-                            }
-                        }
-                    }
-                    d.put("now", now + "");
-                    d.put("size", bytes.size() + "");
-                    try {
-                        receive.send(d, address, port, socket);
-                    } catch (InterruptedException | ExecutionException e) {
-                        e.printStackTrace();
-                    }
-                    // receive.stop();
-                    // screenCapture.stop();
-                }).start();
-
-            }
-
-            @Override
             public void writeLog(Object message) {
                 System.out.println("writeLog: " + message);
             }
@@ -117,7 +53,73 @@ public class S {
                 return false;
             }
 
-        }, 6465, 512);
+            @Override
+            public void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket) {
+                System.out.println("网络延时:" + (data.getReceiveTime() - data.getSendTime()));
+                System.out.println("处理延时:" + (data.getLastTime() - data.getReceiveTime()));
+                System.out.println("获取数据: " + data);
+                long sTime = System.currentTimeMillis();// 服务器接收完数据的时间
+                rn++;
+                int sleep_time;// 客户端请求的时间片间隔
+                long start_time;// 客户端请求的时间起点
+                try {
+                    sleep_time = Integer.parseInt(data.getString("sleep"));
+                } catch (Exception e) {
+                    sleep_time = 0;
+                }
+                try {
+                    start_time = Long.parseLong(data.getString("start"));
+                } catch (Exception e) {
+                    start_time = System.currentTimeMillis();
+                }
+                System.out.println(start_time + "  " + sleep_time);
+                if (sleep_time >= (1 + buffer) * 1000 - 2 * gap)
+                    sleep_time = 500;
+                if (sleep_time <= gap)
+                    sleep_time = (int) gap + 20;
+                long start = start_time;
+                long sleep = sleep_time;
+                System.out.println(start + "  " + sleep);
+                new Thread(() -> {
+                    long hTime = System.currentTimeMillis();
+                    List<byte[]> bytes = null;
+                    while (bytes == null || bytes.size() <= 1) {
+                        bytes = screenCapture.getByte(start, sleep);
+                    }
+                    System.out.println("处理发送中 " + bytes.size());
+                    ReceiveMap map = new ReceiveMap();
+                    int i = 0;
+                    for (byte[] b : bytes) {
+                        i++;
+                        if (b == null) {
+                            map.put("p_" + i, new byte[0]);
+                        } else {
+                            try {
+                                map.put("p_" + i, b);
+                            } catch (Exception e) {
+                                map.put("p_" + i, new byte[0]);
+                                System.out.println("p_" + i + " null");
+                            }
+                        }
+                    }
+
+                    map.put("size", bytes.size() + "");// 回复图片范围
+                    map.put("frame", frame + "");// 回复服务器帧率
+                    map.put("code", code);// 回复服务器图片编码格式
+                    map.put("satrt", start + "");// 回复时间起点
+                    map.put("sTime", sTime + "");// 回复服务器完整接收到数据的时间
+                    map.put("hTime", hTime + "");// 回复服务器开始处理图片数据的时间
+                    map.put("sEnd", System.currentTimeMillis() + "");// 回复服务器结束处理的时间
+                    System.out.println(map);
+                    try {
+                        receive.send(map, address, port, socket);
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+            }
+
+        }, 6465, 20480);
         receive.start();
     }
 

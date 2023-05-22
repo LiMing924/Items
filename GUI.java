@@ -71,7 +71,6 @@ public class GUI extends JFrame implements ActionListener {
                 try {
                     Thread.sleep(getTime / 2);
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }

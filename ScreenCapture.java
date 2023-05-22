@@ -2,7 +2,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 import liming.texthandle.IO;
 import liming.texthandle.IO.IOData;
@@ -97,11 +96,21 @@ public class ScreenCapture {
         }
     }
 
+    public List<byte[]> getByte(long now_time, long get_time) {
+        try {
+            // 获取截屏数据并将其转换为视频
+            return mScreen.getByte(now_time, get_time);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private class MScreen {
 
         private int size;// 自动计算的最大缓冲长度
         private List<Time_Data> datas;
-        private final ReentrantLock lock = new ReentrantLock();
+        // private final ReentrantLock lock = new ReentrantLock();
         private long start_time;// 开始的时间
         private int gap;// 由帧率计算的帧间时长
 
@@ -119,8 +128,8 @@ public class ScreenCapture {
         public BufferedImage add(long time, BufferedImage image) {
             length = image.getHeight() * image.getWidth();
             Time_Data time_Data = new Time_Data(time, image);
-            lock.lock();
-            try {
+            // lock.lock();
+            synchronized (datas) {
                 if (datas.size() == 0) {
                     datas.add(time_Data);
                 } else {
@@ -135,17 +144,17 @@ public class ScreenCapture {
                 if (datas.size() > size) {
                     datas.remove(0);
                 }
-            } finally {
-                lock.unlock();
             }
             return image;
         }
 
         public List<BufferedImage> get(long now_time, long get_time) throws IOException {
             List<Time_Data> copy;
-            lock.lock();
-            copy = new ArrayList<>(datas);
-            lock.unlock();
+            // lock.lock();
+            synchronized (datas) {
+                copy = new ArrayList<>(datas);
+            }
+            // lock.unlock();
             if (copy.isEmpty()) {
                 System.out.print("\r缓冲为空");
                 return null;
@@ -161,19 +170,58 @@ public class ScreenCapture {
             return datas;
         }
 
+        public List<byte[]> getByte(long now_time, long get_time) throws IOException {
+            List<Time_Data> copy;
+            // lock.lock();
+            synchronized (datas) {
+                copy = new ArrayList<>(datas);
+            }
+            // lock.unlock();
+            if (copy.isEmpty()) {
+                System.out.print("\r缓冲为空");
+                return null;
+            }
+            List<byte[]> datas = new ArrayList<>();
+            for (Time_Data data : copy) {
+                if (data.getStartSerial() > (now_time - start_time) / gap + 1)
+                    break;
+                if (data.getStartSerial() < (now_time - get_time - start_time) / gap - 1)
+                    continue;
+                datas.add(data.getByte());
+            }
+            return datas;
+        }
+
         private class Time_Data {
-            private long time;
-            private BufferedImage image;
-            private long num;
+            private long time;// 创建时间
+            private BufferedImage image;// 图像信息
+            private byte[] bytes;
+            private long num;// 图像序号
+            private Object key = new Object();
 
             public Time_Data(long time, BufferedImage image) {
                 this.image = image;
                 this.time = time;
                 num = 0;
+                new Thread(() -> {
+                    synchronized (key) {
+                        try {
+                            bytes = getImgByte(image);
+                        } catch (IOException e) {
+                            System.out.println(this);
+                        }
+                    }
+                }).start();
             }
 
             public BufferedImage getImage() {
                 return image;
+            }
+
+            public byte[] getByte() {
+                synchronized (key) {
+                    return bytes;
+                }
             }
 
             // // 判断截屏数据是否过期
