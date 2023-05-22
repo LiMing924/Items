@@ -1,6 +1,7 @@
 package liming.texthandle;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,8 +13,6 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import liming.key.encryption.RSA_Encryption;
 
 /**
  * FileRW类用于文件读写操作，提供了多种编码格式和读写方式。
@@ -31,19 +30,45 @@ import liming.key.encryption.RSA_Encryption;
  * copyLargeFile方法用于复制大文件。
  */
 public enum FileRW {
-	UTF8("UTF-8"), GBK("GBK"), GB2312("GB2312"), GB18030("GB18030"), ISO88591("ISO-8859-1"), UTF16("UTF-16");
+	UTF8("UTF-8", 0), GBK("GBK", 1), GB2312("GB2312", 2), GB18030("GB18030", 3), ISO88591("ISO-8859-1", 4),
+	UTF16("UTF-16", 5);
 
 	private String value;
+	private int num;
 
-	FileRW(String value) {
+	FileRW(String value, int num) {
 		this.value = value;
+		this.num = num;
 	}
 
 	public String getValue() {
 		return value;
 	}
 
-	private static FileRW CODE = GBK;
+	public byte getNum() {
+		return (byte) num;
+	}
+
+	public static FileRW getFileRW(int num) throws EOFException {
+		switch (num) {
+			case 0:
+				return UTF8;
+			case 1:
+				return GBK;
+			case 2:
+				return GB2312;
+			case 3:
+				return GB18030;
+			case 4:
+				return ISO88591;
+			case 5:
+				return UTF16;
+			default:
+				throw new EOFException("未找到id为 " + num + " 的方法");
+		}
+	}
+
+	private static FileRW ENCODE = GBK;
 
 	/**
 	 * 设置编码格式
@@ -51,9 +76,9 @@ public enum FileRW {
 	 * @param code
 	 * @return
 	 */
-	public static String setCode(FileRW code) {
-		CODE = code;
-		return CODE.value;
+	public static String setEnCode(FileRW EnCode) {
+		ENCODE = EnCode;
+		return ENCODE.value;
 	}
 
 	/**
@@ -62,9 +87,13 @@ public enum FileRW {
 	 * @param file 目标文件
 	 * @return 文件内容
 	 */
-	public static String readString(File file) {
+	public static String readFileString(File file) {
+		return readFileString(file, ENCODE);
+	}
+
+	public static String readFileString(File file, FileRW ENCODE) {
 		try {
-			BufferedReader bReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), CODE.value));// new一个BufferedReader对象，将文件内容读取到缓存
+			BufferedReader bReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), ENCODE.value));// new一个BufferedReader对象，将文件内容读取到缓存
 			StringBuilder sb = new StringBuilder();// 定义一个字符串缓存，将字符串存放缓存中
 			String s = "";
 			while ((s = bReader.readLine()) != null) {// 逐行读取文件内容，不读取换行符和末尾的空格
@@ -86,10 +115,13 @@ public enum FileRW {
 	 * @param append 是否追加写入
 	 * @return 写入结果
 	 */
-	public static boolean WriteString(File file, String code, boolean append) {
-		try {
+	public static boolean writeFileString(File file, String code, boolean append) {
+		return writeFileString(file, code, append, ENCODE);
+	}
 
-			OutputStreamWriter oStreamWriter = new OutputStreamWriter(new FileOutputStream(file, append), CODE.value);
+	public static boolean writeFileString(File file, String code, boolean append, FileRW ENCODE) {
+		try {
+			OutputStreamWriter oStreamWriter = new OutputStreamWriter(new FileOutputStream(file, append), ENCODE.value);
 			oStreamWriter.append(code);
 			oStreamWriter.close();
 			return true;
@@ -99,20 +131,7 @@ public enum FileRW {
 		return false;
 	}
 
-	/**
-	 * 将错误信息的堆栈数据转为文本显示
-	 * 
-	 * @param e
-	 * @return
-	 */
-	public static String getError(Exception e) {
-		StringWriter sw = new StringWriter();
-		PrintWriter pw = new PrintWriter(sw);
-		e.printStackTrace(pw);
-		return sw.toString();
-	}
-
-	public static byte[] readFile(File file) {
+	public static byte[] readFileByte(File file) {
 		try {
 			if (file.length() > Integer.MAX_VALUE) {
 				System.out.println("文件大小超过限制" + file.length() + ":" + Integer.MAX_VALUE
@@ -130,40 +149,10 @@ public enum FileRW {
 		}
 	}
 
-	// 读取文件并将二进制数据转为字符串
-	public static String readFile(String filePath) {
-		String result = "";
-		File file = new File(filePath);
-		result = RSA_Encryption.signatureToString(readFile(file));
-		return result;
-	}
-
-	// 将文件从一个地方转移到另一个地方
-	public static boolean transferFiles(String filePath, String newFilePath) {
+	// 将二进制数据写入文件，通过设置append的值选择是否追加写入
+	public static boolean writeFileByte(File file, byte[] data, boolean append) {
 		try {
-			File file = new File(filePath);
-			FileInputStream inputStream = new FileInputStream(file);
-			FileOutputStream outputStream = new FileOutputStream(newFilePath);
-			byte[] buffer = new byte[102400];
-			int length;
-			while ((length = inputStream.read(buffer)) > 0) {
-				outputStream.write(buffer, 0, length);
-			}
-			inputStream.close();
-			outputStream.close();
-			return true;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
-		}
-	}
-
-	// 将字符串转为二进制数据并写入文件，通过设置append的值选择是否追加写入
-	public static boolean writeFile(String filePath, String content, boolean append) {
-		try {
-			File file = new File(filePath);
 			FileOutputStream fos = new FileOutputStream(file, append);
-			byte[] data = RSA_Encryption.stringToSignature(content);
 			fos.write(data);
 			fos.flush();
 			fos.close();
@@ -180,9 +169,22 @@ public enum FileRW {
 	 * @param destFilePath   新文件
 	 * @throws IOException
 	 */
-	public static void copyLargeFile(String sourceFilePath, String destFilePath) throws IOException {
-		Path sourcePath = Paths.get(sourceFilePath);
-		Path destPath = Paths.get(destFilePath);
+	public static void copyLargeFile(File sourceFile, File destFile) throws IOException {
+		Path sourcePath = Paths.get(sourceFile.getPath());
+		Path destPath = Paths.get(destFile.getPath());
 		Files.copy(sourcePath, destPath);
+	}
+
+	/**
+	 * 将错误信息的堆栈数据转为文本显示
+	 * 
+	 * @param e
+	 * @return
+	 */
+	public static String getError(Exception e) {
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		e.printStackTrace(pw);
+		return sw.toString();
 	}
 }

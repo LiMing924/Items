@@ -8,7 +8,6 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -18,7 +17,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -34,7 +32,8 @@ public class HandleReceive {
 	private static boolean debug = false; // 默认关闭调试模式
 	private static int sendSpeed = 10; // 默认发送端处理速度
 	private int handlesize;// bufferPool成员的个数
-	private int handlesize_ratio = 1024; // bufferPool 系数
+	private int handleDatasize_max = 500;
+	private Unit handleDatasize_maxUnit = Unit.MB;
 	private BlockingQueue<DatagramPacket> bufferPool;
 	private boolean running = false;
 
@@ -152,12 +151,17 @@ public class HandleReceive {
 		this.port = port;
 	}
 
+	public void setDataSizeMax(int size, Unit unit) {
+		handleDatasize_max = size;
+		handleDatasize_maxUnit = unit;
+	}
+
 	/**
 	 * 设置接收区大小
 	 */
 	public void setDataSize(int dataSize) {
 		if (text != null) {
-			this.dataSize = text.setDataSize(dataSize) + 162;
+			this.dataSize = text.setDataSize(dataSize);
 		} else
 			this.dataSize = dataSize;
 		gdap.writeLog("DataSize发生改变: " + dataSize + " -> " + this.dataSize);
@@ -197,9 +201,8 @@ public class HandleReceive {
 		setDataSize(dataSize);
 		gdap.writeLog("发送线程池设置值=" + sendSpeed + ",处理线程池中等待加入的sockets个数为=" + sockets.size());
 		sendPool = Executors.newFixedThreadPool(sendSpeed); // 初始化发送线程池
-		handlesize = sockets.size() * (dataSize / 512) * handlesize_ratio;// 设置缓冲区大小为socket个数*单个缓冲区大小除以512字节取整的2048倍
-		if (handlesize == 0)
-			handlesize = handlesize_ratio;
+
+		handlesize = (int) Math.ceil((double) handleDatasize_max * handleDatasize_maxUnit.getValue() / dataSize);
 		bufferPool = new ArrayBlockingQueue<>(handlesize);
 		for (int i = 0; i < handlesize; i++) {
 			bufferPool.offer(new DatagramPacket(new byte[dataSize], dataSize));
@@ -217,11 +220,11 @@ public class HandleReceive {
 									socket.getLocalPort() + "接收数据" + packet.getAddress() + ":" + packet.getPort());
 							receivePool.execute(() -> {
 								try {
-									Map<String, String> map = text.Handle(packet);
+									ReceiveMap map = text.Handle(packet);
 									if (map != null) {
 										gdap.sendDataToClient(map, packet.getAddress(), packet.getPort(), socket);
 									}
-								} catch (IOException | JSONException | InterruptedException | ExecutionException e) {
+								} catch (Exception e) {
 									gdap.writeStrongLog(socket.getLocalPort() + " 处理中断 " + FileRW.getError(e));
 								}
 							});
@@ -270,11 +273,11 @@ public class HandleReceive {
 	/**
 	 * 发送数据包，使用指定的DatagramSocket、IP和端口号
 	 */
-	public boolean send(Map<String, String> map, String ip, int port, DatagramSocket socket)
+	public boolean send(ReceiveMap receiveMap, String ip, int port, DatagramSocket socket)
 			throws InterruptedException, ExecutionException {
 		return sendPool.submit(() -> {
 			try {
-				boolean state = text.Send(map, InetAddress.getByName(ip), port, socket);
+				boolean state = text.Send(receiveMap, InetAddress.getByName(ip), port, socket);
 				return state;
 			} catch (NullPointerException e) {
 				gdap.writeStrongLog("服务器未启动");
@@ -292,26 +295,33 @@ public class HandleReceive {
 	/**
 	 * 发送数据包，使用指定的IP和端口号和第一个Datagram端口号和第一个DatagramSocket
 	 */
-	public boolean send(Map<String, String> map, String ip, int port) throws InterruptedException, ExecutionException {
+	public boolean send(ReceiveMap receiveMap, String ip, int port) throws InterruptedException, ExecutionException {
 		if (sockets.size() > 0) {
-			return send(map, ip, port, sockets.get(0));
+			return send(receiveMap, ip, port, sockets.get(0));
 		} else {
-			return sendPool.submit(() -> {
-				try (DatagramSocket socket = new DatagramSocket(port)) {
-					return text.Send(map, InetAddress.getByName(ip), port, socket);
-				} catch (IOException e) {
-					gdap.writeLog(e);
-					return false;
-				}
-			}).get();
+			try (DatagramSocket socket = new DatagramSocket(port)) {
+				return send(receiveMap, ip, port, socket);
+			} catch (Exception e) {
+				gdap.writeLog(e);
+				return false;
+			}
+
+			// return sendPool.submit(() -> {
+			// try (DatagramSocket socket = new DatagramSocket(port)) {
+			// return text.Send(receiveMap, InetAddress.getByName(ip), port, socket);
+			// } catch (IOException e) {
+			// gdap.writeLog(e);
+			// return false;
+			// }
+			// }).get();
 		}
 	}
 
-	public boolean send(Map<String, String> map, InetAddress address, int port, DatagramSocket socket)
+	public boolean send(ReceiveMap receiveMap, InetAddress address, int port, DatagramSocket socket)
 			throws InterruptedException, ExecutionException {
 		return sendPool.submit(() -> {
 			try {
-				boolean state = text.Send(map, address, port, socket);
+				boolean state = text.Send(receiveMap, address, port, socket);
 				return state;
 			} catch (IOException e) {
 				gdap.writeLog(FileRW.getError(e));
@@ -323,11 +333,11 @@ public class HandleReceive {
 	/**
 	 * 发送数据包，使用指定的DatagramSocket
 	 */
-	public boolean send(Map<String, String> map, DatagramPacket packet, DatagramSocket socket)
+	public boolean send(ReceiveMap receiveMap, DatagramPacket packet, DatagramSocket socket)
 			throws InterruptedException, ExecutionException {
 		return sendPool.submit(() -> {
 			try {
-				boolean state = text.Send(map, packet, socket);
+				boolean state = text.Send(receiveMap, packet, socket);
 				return state;
 			} catch (IOException e) {
 				gdap.writeLog(FileRW.getError(e));
@@ -339,14 +349,14 @@ public class HandleReceive {
 	/**
 	 * 发送数据包，使用第一个DatagramSocket
 	 */
-	public boolean send(Map<String, String> map, DatagramPacket packet)
+	public boolean send(ReceiveMap receiveMap, DatagramPacket packet)
 			throws UnsupportedEncodingException, InterruptedException, ExecutionException {
 		if (sockets.size() > 0) {
-			return send(map, packet, sockets.get(0));
+			return send(receiveMap, packet, sockets.get(0));
 		} else {
 			return sendPool.submit(() -> {
 				try (DatagramSocket socket = new DatagramSocket(port)) {
-					return text.Send(map, packet, socket);
+					return text.Send(receiveMap, packet, socket);
 				} catch (IOException e) {
 					gdap.writeLog(e);
 					return false;
