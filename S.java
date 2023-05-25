@@ -3,7 +3,6 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import liming.texthandle.GetDataAndPacket;
 import liming.texthandle.HandleReceive;
 import liming.texthandle.IO;
 import liming.texthandle.ReceiveMap;
@@ -36,7 +35,7 @@ public class S {
         long gap = screenCapture.getGap();
         // HandleReceive.setDebug(true);
 
-        receive = new HandleReceive(new GetDataAndPacket() {
+        receive = new HandleReceive(6465, 20480) {
 
             @Override
             public void writeLog(Object message) {
@@ -119,7 +118,7 @@ public class S {
                 }).start();
             }
 
-        }, 6465, 20480);
+        };
         receive.start();
     }
 

@@ -6,24 +6,23 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutionException;
 
 import javax.imageio.ImageIO;
-import liming.texthandle.GetDataAndPacket;
 import liming.texthandle.HandleReceive;
 import liming.texthandle.ReceiveMap;
 
 public class C {
     HandleReceive receive;
 
-    public static void main(String[] args) throws SocketException {
+    public static void main(String[] args) throws SocketException, UnknownHostException {
         new C();
     }
 
-    public C() throws SocketException {
+    public C() throws SocketException, UnknownHostException {
         // HandleReceive.setDebug(true);
-        receive = new HandleReceive(new GetDataAndPacket() {
-
+        receive = new HandleReceive(6666, 20480) {
             @Override
             public void sendDataToClient(ReceiveMap data, InetAddress address, int port,
                     DatagramSocket socket) {
@@ -95,22 +94,10 @@ public class C {
             }
 
             @Override
-            public void writeLog(Object message) {
-                if (receive.getDebug())
-                    System.out.println("writeLog: " + message);
-            }
-
-            @Override
-            public void writeStrongLog(Object message) {
-                System.out.println("writeStrongLog: " + message);
-            }
-
-            @Override
             public boolean isDataReceived(long timeout) {
                 return false;
             }
-
-        }, 6666, 20480);
+        };
         receive.start();
         ReceiveMap map = new ReceiveMap();
         map.put("sleep", "1000");

@@ -3,56 +3,48 @@ package Try;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutionException;
 
-import liming.texthandle.GetDataAndPacket;
 import liming.texthandle.HandleReceive;
 import liming.texthandle.ReceiveMap;
 
 public class Try1 {
-    public static void main(String[] args) throws SocketException {
+    public static void main(String[] args) throws SocketException, UnknownHostException {
         new Try1();
     }
 
     HandleReceive receive;
 
-    public Try1() throws SocketException {
+    public Try1() throws SocketException, UnknownHostException {
         HandleReceive.setDebug(true);
-        receive = new HandleReceive(new GetDataAndPacket() {
-
+        receive = new HandleReceive() {
             @Override
-            public void sendDataToClient(ReceiveMap data, InetAddress address, int port,
-                    DatagramSocket socket) {
+            public void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket) {
                 System.out.println(data);
                 System.out.println(data.getDataInfo());
-            }
+                receive.stop();
 
-            @Override
-            public void writeLog(Object message) {
-                if (receive.getDebug()) {
-                    System.out.println("writeLog: " + message);
-                }
-            }
-
-            @Override
-            public void writeStrongLog(Object message) {
-                System.out.println("writeStrongLog: " + message);
+                Object object = "12345";
+                System.out.println(object.getClass().getSimpleName());
             }
 
             @Override
             public boolean isDataReceived(long timeout) {
-                return false;
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'isDataReceived'");
             }
-
-        }, 6465, 1024);
-        // receive.setDataSizeMax(100, Unit.GB);
+        };
+        receive.setDataSize(10240 * 3);
+        receive.setPort(6465);
         receive.start();
+
         System.out.println("发送长度为：" + receive.getDataSize());
         String str = "0123456789";
         while (str.length() < receive.getDataSize() * 1) {
             str += str;
         }
-        // System.out.println("发送长度为：" + receive.getDataSize());
+        System.out.println("发送长度为：" + receive.getDataSize());
         ReceiveMap map = new ReceiveMap();
         map.put("str1", str);
         map.put("str2", str);
@@ -67,5 +59,6 @@ public class Try1 {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
     }
 }
