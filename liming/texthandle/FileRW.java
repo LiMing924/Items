@@ -30,7 +30,11 @@ import java.nio.file.Paths;
  * copyLargeFile方法用于复制大文件。
  */
 public enum FileRW {
-	UTF8("UTF-8", 0), GBK("GBK", 1), GB2312("GB2312", 2), GB18030("GB18030", 3), ISO88591("ISO-8859-1", 4),
+	UTF8("UTF-8", 0),
+	GBK("GBK", 1),
+	GB2312("GB2312", 2),
+	GB18030("GB18030", 3),
+	ISO88591("ISO-8859-1", 4),
 	UTF16("UTF-16", 5);
 
 	private String value;
