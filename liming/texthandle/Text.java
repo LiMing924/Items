@@ -6,7 +6,6 @@ import java.lang.reflect.Array;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +27,7 @@ public class Text {
 
 	private DtatPoolTemps temps;// 数据合并缓冲池对象
 
-	private int sendnum = 0, receivenum = 0, handlenum = 0, errnum = 0;// 发送数，接收数，处理数，错误数
+	private int sendnum = 0, handlenum = 0, errnum = 0;// 发送数，接收数，处理数，错误数
 
 	private int DATASIZE = setDataSize(512);// 假设总长在512传输字节的情况下，20位基本标识+5位数据段标识+127
 											// 预防中文编码带来的异常和数据前缀及后缀所需长度，DATASIZE最大值为512-154=358长度
@@ -108,41 +107,20 @@ public class Text {
 
 	/**
 	 * 
-	 * @param map    待发送的数据
-	 * @param IP     目标ip
-	 * @param port   目标端口
-	 * @param socket 发送的socket
-	 * @return 是否发送成功
-	 * @throws Exception
-	 */
-
-	public boolean Send(ReceiveMap receiveMap, String IP, int port, DatagramSocket socket)
-			throws Exception {
-		try {
-			return Send(receiveMap, InetAddress.getByName(IP), port, socket);
-		} catch (UnknownHostException e) {
-			gdap.writeStrongLog(FileRW.getError(e));
-			return false;
-		}
-	}
-
-	/**
-	 * 
-	 * @param map     待发送的数据
-	 * @param address 目标ip
-	 * @param port    目标端口
-	 * @param socket  发送的socket
+	 * @param receiveMap 待发送的数据
+	 * @param address    目标ip
+	 * @param port       目标端口
+	 * @param socket     发送的socket
 	 * @return 是否发送成功
 	 * @throws Exception
 	 */
 	public boolean Send(ReceiveMap receiveMap, InetAddress address, int port, DatagramSocket socket)
 			throws Exception {
 		sendnum++;
+		receiveMap.setIP(address, port);
 		DatagramPacket[] packets = getPackets(receiveMap, address, port);
 		try {
-
 			log("发送包长度:" + packets.length);
-			System.out.println("发送包长度:" + packets.length);
 			for (DatagramPacket packet : packets) {
 				try {
 					Thread.sleep(1);
@@ -156,41 +134,6 @@ public class Text {
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 * 通过数据包回发
-	 * 
-	 * @param map    待发送的数据
-	 * @param packet UDP数据包
-	 * @return 是否发送成功
-	 * @throws Exception
-	 */
-	public boolean Send(ReceiveMap receiveMap, DatagramPacket packet, DatagramSocket socket)
-			throws Exception {
-		return Send(receiveMap, packet.getAddress(), packet.getPort(), socket);
-	}
-
-	public JSONObject Receive(DatagramPacket packet) throws JSONException, UnsupportedEncodingException {
-		receivenum++;
-		String json;
-		try {
-			json = new String(packet.getData(), 0, packet.getLength(), ENCODED.getValue());
-		} catch (UnsupportedEncodingException e) {
-			errnum++;
-			throw new UnsupportedEncodingException();
-		}
-		JSONObject object;
-		try {
-			log("原数据=" + json);
-			object = new JSONObject(json);
-		} catch (JSONException e) {
-			gdap.writeStrongLog("原数据=" + json);
-			errnum++;
-			throw new JSONException(e);
-		}
-		return object;
-
 	}
 
 	public ReceiveMap Handle(DatagramPacket packet)
@@ -269,7 +212,6 @@ public class Text {
 		root.put("Encoed", ENCODED);
 		root.put("Debug", DEBUG);
 		root.put("Send", sendnum);
-		root.put("Receive", receivenum);
 		root.put("Handle", handlenum);
 		root.put("Err", errnum);
 		return root;

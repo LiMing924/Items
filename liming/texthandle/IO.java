@@ -12,7 +12,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import javax.imageio.IIOImage;
@@ -22,17 +21,43 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
 public class IO {
+    /**
+     * 时间间隔类
+     * 设置帧视频的帧率，及对获取到的视频的处理
+     */
     public static abstract class IOData {
+        /**
+         * 如何处理得到帧图片
+         * 
+         * @param time  图片的时间戳
+         * @param image 图片
+         */
         public abstract void getImage(long time, BufferedImage image);
 
+        // 默认的帧间隔时间
         private long time = 1 * 1000 / 30;
 
+        /**
+         * 设置视频帧率 在AllTime内获取frameRate张图片
+         * 
+         * @param AllTime   总时间
+         * @param frameRate 总张数
+         * @return time
+         */
         public long setTime(long AllTime, float frameRate) {
             return time = (long) Math.ceil(AllTime / frameRate);
-
         }
     }
 
+    /**
+     * 获取IOScreen对象 传入IOData，图片压缩比，图片的格式，缓存大小
+     *
+     * @param io      IOData
+     * @param quality 图片压缩比 原图为1.0
+     * @param code    图片的格式 如png，jpg
+     * @param factor  缓冲大小 基础缓冲1秒的数据，当请求超过1秒的数据会默认丢弃
+     * @return
+     */
     public static IOScreen getScreen(IOData io, float quality, String code, float factor) {
         return IOScreen.getScreen(io, quality, code, factor);
     }
@@ -48,15 +73,15 @@ public class IO {
         private IOData io;
         private String code;// 设置图片格式
         private float quality;// 设置图片的压缩比
-        private long time;
+        private final long TimeOut;
 
         private IOScreen(IOData io, float quality, String code, float factor) {
             state = new State(io, factor);
             this.io = io;
             this.code = code;
             this.quality = quality;
-            executorService = Executors.newFixedThreadPool((int) state.max * 2);
-            time = 600;
+            // executorService = Executors.newFixedThreadPool((int) state.max * 2);
+            TimeOut = 400;
         }
 
         public static IOScreen getScreen(IOData io, float quality, String code, float factor) {
@@ -88,12 +113,16 @@ public class IO {
                 addThread.interrupt();
             }
 
-            datas = new ArrayList<>();
-
+            if (datas != null)
+                datas.clear();
+            else
+                datas = new ArrayList<>();
+            executorService = Executors.newFixedThreadPool((int) state.max * 2);
             addThread = new Thread(new AddRunnable());
             getThread = new Thread(new GetRunnable());
             getThread.start();
             addThread.start();
+
             System.out.println("已启动1");
         }
 
@@ -130,14 +159,15 @@ public class IO {
             }
         }
 
-        class AddRunnable implements Runnable {
+        // 向上层提交图片数据的任务
+        private class AddRunnable implements Runnable {
             public void run() {
                 synchronized (datas) {
                     while (running) {
                         // System.out.println("轮回处理截图数据");
                         while (!datas.isEmpty()) {
                             Data data = datas.remove(0);
-                            if (data.time < System.currentTimeMillis() - time * 2)
+                            if (data.time < System.currentTimeMillis() - TimeOut * 2)
                                 continue;
                             new Thread(() -> {
                                 // System.out.println("截图数据回传");
@@ -153,22 +183,28 @@ public class IO {
                         // System.out.println("等待结束");
                     }
                 }
-            };
-        };
+            }
+        }
 
         private Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
 
-        class GetRunnable implements Runnable {
+        // 循环获取屏幕图片的任务
+        private class GetRunnable implements Runnable {
             public void run() {
                 long StartTime = System.currentTimeMillis();
                 while (running) {
-                    Future<?> future = executorService.submit(new MRunnable());
+                    long time = System.currentTimeMillis();
                     executorService.execute(() -> {
+                        Thread thread = new Thread(new MRunnable(time));
+                        thread.start();
                         try {
-                            future.get(time, TimeUnit.MILLISECONDS);
-                        } catch (Exception e) {
-                            future.cancel(true);
+                            thread.join(TimeOut);
+                            thread.join();
+                        } catch (InterruptedException e) {
+                            thread.interrupt();
                         }
+                        if (thread.isAlive())
+                            thread.interrupt();
                     });
                     try {
                         Thread.sleep(io.time - (System.currentTimeMillis() - StartTime) % io.time);
@@ -188,29 +224,42 @@ public class IO {
                 num = 0;
             }
 
-            private long add() {
-                return ++num;
-            }
-
-            private long remove() {
+            //
+            private synchronized long remove() {
                 return --num;
             }
 
-            private boolean equals() {
-                return num < max;
+            private synchronized boolean isAdd() {
+                if (num < max) {
+                    num++;
+                    return true;
+                } else
+                    return false;
             }
         }
 
+        // 获取单张图片的任务
         private class MRunnable implements Runnable {
+            long time;
+
+            public MRunnable(long time) {
+                this.time = time;
+            }
 
             @Override
             public void run() {
+
+                {
+                    long time = System.currentTimeMillis();
+                    if (this.time + TimeOut < time)
+                        return;
+                }
+                boolean run = false;
+
                 try {
-                    synchronized (state) {
-                        if (!state.equals())
-                            return;
-                        state.add();
-                    }
+                    if (!state.isAdd())
+                        return;
+                    run = true;
                     long time = System.currentTimeMillis();
                     Robot robot = new Robot();
                     Rectangle screenRect = new Rectangle(dimension);
@@ -218,13 +267,11 @@ public class IO {
                     add(new Data(time, screenCapture));
                 } catch (Exception e) {
                 } finally {
-                    synchronized (state) {
+                    if (run) {
                         state.remove();
                     }
                 }
-
             }
-
         }
     }
 }

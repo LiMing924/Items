@@ -15,7 +15,7 @@ public interface GetDataAndPacket {
 	 * @param port    客户端端口
 	 * @param socket  数据包套接字
 	 */
-	void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket);
+	void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket) throws Exception;
 
 	/**
 	 * 写入日志信息
