@@ -12,8 +12,8 @@ import liming.key.encryption.RSA_Encryption;
 
 class UDPDataInfo {
     private FileRW ENCODE;// 编码
-    private long time;// 数据 时间
-    private long startTime, lastTime;
+    private long time;// 数据发送时间
+    private long startTime, lastTime, endTime;// 首次收到的时间,最后一次收到的时间，处理结束的时间
     private int datasize;// 缓冲区长度
     private int code;// 随机码
     private int hashCode;
@@ -29,12 +29,13 @@ class UDPDataInfo {
         this(Arrays.copyOfRange(packet.getData(), 0, packet.getLength()));
     }
 
-    private UDPDataInfo(FileRW ENCODE, long time, long startTime, long lastTime, int datasize, int code, int hashCode,
-            int length, int majorVersionNumber, int minorVersionNumber, int serialNumber) {
+    private UDPDataInfo(FileRW ENCODE, long time, long startTime, long lastTime, long endTime, int datasize, int code,
+            int hashCode, int length, int majorVersionNumber, int minorVersionNumber, int serialNumber) {
         this.ENCODE = ENCODE;
         this.time = time;
         this.startTime = startTime;
         this.lastTime = lastTime;
+        this.endTime = endTime;
         this.datasize = datasize;
         this.code = code;
         this.hashCode = hashCode;
@@ -48,7 +49,7 @@ class UDPDataInfo {
         if (info.length < 20) {
             throw new Exception("非本协议的数据包,终止处理,其中Bast64的结果为: " + RSA_Encryption.signatureToString(info));
         }
-        startTime = lastTime = System.currentTimeMillis();
+        startTime = lastTime = endTime = System.currentTimeMillis();
         ENCODE = FileRW.getFileRW(info[0] >>> 4 & 0x0f);
         time = (info[0] & 0x0fL) << 38 | (info[1] & 0xffL) << 30 | (info[2] & 0xffL) << 22 | (info[3] & 0xffL) << 14
                 | (info[4] & 0xffL) << 6 | (info[5] & 0xffL) >>> 2;
@@ -107,12 +108,20 @@ class UDPDataInfo {
         if (length == 1) {
             int type = data[0] >>> 7 & 0x01;
             if (type == 0) {
-                String string = new String(Arrays.copyOfRange(data, 1, data.length), ENCODE.getValue());
-                System.out.println(string);
+                // String string = new String(Arrays.copyOfRange(data, 1, data.length),
+                // ENCODE.getValue());
+                // System.out.println(string);
                 JSONObject object = new JSONObject(
                         new String(Arrays.copyOfRange(data, 1, data.length), ENCODE.getValue()));
                 for (String key : object.keySet()) {
-                    map.put(key, object.optString(key));
+                    if (key.equals("JSONS")) {
+                        JSONObject jsonObject = new JSONObject(object.getString(key));
+                        for (String jsonkey : jsonObject.keySet()) {
+                            map.put(jsonkey, jsonObject.getJSONObject(jsonkey));
+                        }
+                    } else {
+                        map.put(key, object.optString(key));
+                    }
                 }
             } else {
                 int keylength = data[0] & 0x7f;
@@ -120,8 +129,8 @@ class UDPDataInfo {
                 map.put(key, Arrays.copyOfRange(data, 5 + keylength, data.length));
             }
             {
-                UDPDataInfo info = new UDPDataInfo(ENCODE, time, startTime, System.currentTimeMillis(), datasize, code,
-                        hashCode, length, MajorVersionNumber, MinorVersionNumber, SerialNumber);
+                UDPDataInfo info = new UDPDataInfo(ENCODE, time, startTime, lastTime, System.currentTimeMillis(),
+                        datasize, code, hashCode, length, MajorVersionNumber, MinorVersionNumber, SerialNumber);
                 map.setInfo(info);
             }
             return map;
@@ -151,7 +160,14 @@ class UDPDataInfo {
             }
             JSONObject object = new JSONObject(new String(dataString.toByteArray(), ENCODE.getValue()));
             for (String key : object.keySet()) {
-                map.put(key, object.optString(key));
+                if (key.equals("JSONS")) {
+                    JSONObject jsonObject = new JSONObject(object.getString(key));
+                    for (String jsonkey : jsonObject.keySet()) {
+                        map.put(jsonkey, jsonObject.getJSONObject(jsonkey));
+                    }
+                } else {
+                    map.put(key, object.optString(key));
+                }
             }
             dataString.close();
             UDPByteDataInfo lastInfo = null;
@@ -175,8 +191,8 @@ class UDPDataInfo {
             }
         }
         {
-            UDPDataInfo info = new UDPDataInfo(ENCODE, time, startTime, System.currentTimeMillis(), datasize, code,
-                    hashCode, length, MajorVersionNumber, MinorVersionNumber, SerialNumber);
+            UDPDataInfo info = new UDPDataInfo(ENCODE, time, startTime, lastTime, System.currentTimeMillis(), datasize,
+                    code, hashCode, length, MajorVersionNumber, MinorVersionNumber, SerialNumber);
             map.setInfo(info);
         }
         return map;
@@ -218,21 +234,34 @@ class UDPDataInfo {
         return lastTime;
     }
 
+    public long getEndTime() {
+        return endTime;
+    }
+
+    public FileRW getEnCode() {
+        return ENCODE;
+    }
+
+    public int getDataSize() {
+        return datasize;
+    }
+
     public String getGiatus() {
         return length + ":" + Arrays.toString(value);
     }
 
     public String getDataInfo() {
         return "DataInfo [编码=" + ENCODE.getValue() + ", 发送时间=" + time + ", 首收时间=" + startTime + ", 最近收取时间="
-                + lastTime + ", 缓存区大小=" + datasize + ", 随机码=" + code + ", 数据码=" + hashCode + ", 数据包总长="
-                + length + ", 版本号=" + MajorVersionNumber + "." + MinorVersionNumber + "." + SerialNumber + "]";
+                + lastTime + ",处理结束时间=" + endTime + ", 缓存区大小=" + datasize + ", 随机码=" + code + ", 数据码=" + hashCode
+                + ", 数据包总长=" + length + ", 版本号=" + MajorVersionNumber + "." + MinorVersionNumber + "." + SerialNumber
+                + "]";
     }
 
     @Override
     public String toString() {
         return "UDPDataInfo [编码=" + ENCODE.getValue() + ", 发送时间=" + time + ", 首收时间=" + startTime + ", 最近收取时间="
-                + lastTime + ", 缓存区大小=" + datasize + ", 随机码=" + code + ", 数据码=" + hashCode + ", 数据包总长="
-                + length + ", 数据包序号=" + num + ", 版本号=" + MajorVersionNumber + "."
+                + lastTime + ",处理结束时间=" + endTime + ", 缓存区大小=" + datasize + ", 随机码=" + code + ", 数据码=" + hashCode
+                + ", 数据包总长=" + length + ", 数据包序号=" + num + ", 版本号=" + MajorVersionNumber + "."
                 + MinorVersionNumber + "." + SerialNumber + "]";
     }
 }

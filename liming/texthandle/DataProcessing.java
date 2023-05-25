@@ -31,11 +31,14 @@ class DataProcessing {
 
     protected static List<DatagramPacket> getPackets(FileRW ENCODED, int DATASIZE, ReceiveMap map) throws Exception {
         // System.out.println(map);
+        if (map.getInfo() != null) {
+            ENCODED = map.getEnCode();
+            DATASIZE = map.getDataSize();
+        }
+        map.put("JSONS", new JSONObject(map.getJsonObject()).toString());
         byte[] info = getInfo(ENCODED, DATASIZE, System.currentTimeMillis(),
-                new Random(System.currentTimeMillis() / UUID + UUID).nextInt(899)
-                        + 100,
+                new Random(System.currentTimeMillis() / UUID + UUID).nextInt(899) + 100,
                 map.hashCode());
-
         List<byte[]> datasString = putStringData(ENCODED, DATASIZE,
                 new JSONObject(map.getString()).toString().getBytes(ENCODED.getValue()));
         List<byte[]> datasByte = new ArrayList<>();
@@ -65,7 +68,7 @@ class DataProcessing {
 
     /* 将时间、随机数和hashCode写入和基本信息写入数据头 */
     private static byte[] getInfo(FileRW ENCODED, int DATASIZE, long time, int code, int hashCode) {
-        System.out.println(time + " " + code + " " + hashCode);
+        // System.out.println(time + " " + code + " " + hashCode);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             time = time & 0x3ffffffffffl;

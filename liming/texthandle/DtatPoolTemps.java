@@ -146,19 +146,19 @@ public class DtatPoolTemps {
     }
 
     private void text(Object... objects) {
-        String str = "UDPTemps:{";
+        String str = "处理缓冲池:[";
         for (Object object : objects) {
             str += " " + object.toString();
         }
-        interface1.udp_log(str + "}");
+        interface1.udp_log(str + "]");
     }
 
     private void text_Strong(Object... objects) {
-        String str = "UDPTemps:{";
+        String str = "处理缓冲池:[";
         for (Object object : objects) {
             str += " " + object.toString();
         }
-        interface1.udp_slog(str + "}");
+        interface1.udp_slog(str + "]");
     }
 
     public JSONObject getState() {
@@ -209,10 +209,10 @@ public class DtatPoolTemps {
                     try {
                         Datas.wait(timeout / 2);
                     } catch (Exception e) {
-                        interface1.udp_log(FileRW.getError(e));
                     }
                 }
             }
+            interface1.udp_log("超时线程结束");
         }
     }
 }
