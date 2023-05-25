@@ -23,11 +23,11 @@ public abstract class HandleReceive implements GetDataAndPacket {
 	private ExecutorService sendPool; // 发送线程池
 	private ExecutorService receivePool; // 接收线程池
 	private int port = 64651; // 默认端口号
-	private int dataSize = 512; // 默认接收区大小
+	private int dataSize = 20480; // 默认接收区大小
 	private static boolean debug = false; // 默认关闭调试模式
 	private static int sendSpeed = 10; // 默认发送端处理速度
 	private int handlesize;// bufferPool成员的个数
-	private int handleDatasize_max = 500;
+	private int handleDatasize_max = 512;
 	private Unit handleDatasize_maxUnit = Unit.MB;
 	private BlockingQueue<DatagramPacket> bufferPool;
 	private boolean running = false;
