@@ -114,14 +114,7 @@ class UDPDataInfo {
                 JSONObject object = new JSONObject(
                         new String(Arrays.copyOfRange(data, 1, data.length), ENCODE.getValue()));
                 for (String key : object.keySet()) {
-                    if (key.equals("JSONS")) {
-                        JSONObject jsonObject = new JSONObject(object.getString(key));
-                        for (String jsonkey : jsonObject.keySet()) {
-                            map.put(jsonkey, jsonObject.getJSONObject(jsonkey));
-                        }
-                    } else {
-                        map.put(key, object.optString(key));
-                    }
+                    map.put(key, object.get(key));
                 }
             } else {
                 int keylength = data[0] & 0x7f;
@@ -160,14 +153,7 @@ class UDPDataInfo {
             }
             JSONObject object = new JSONObject(new String(dataString.toByteArray(), ENCODE.getValue()));
             for (String key : object.keySet()) {
-                if (key.equals("JSONS")) {
-                    JSONObject jsonObject = new JSONObject(object.getString(key));
-                    for (String jsonkey : jsonObject.keySet()) {
-                        map.put(jsonkey, jsonObject.getJSONObject(jsonkey));
-                    }
-                } else {
-                    map.put(key, object.optString(key));
-                }
+                map.put(key, object.optString(key));
             }
             dataString.close();
             UDPByteDataInfo lastInfo = null;

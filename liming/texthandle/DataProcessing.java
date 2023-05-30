@@ -19,7 +19,7 @@ class DataProcessing {
     private static final int UUID = java.util.UUID.randomUUID().toString().hashCode();
     private static final int MajorVersionNumber = 3;// 主版本号 协议主要版本 暂时各主版本不兼容
     private static final int MinorVersionNumber = 0;// 副版本号 主要在性能方向的优化版本
-    private static final int SerialNumber = 1;// 序列号 测试时的序列号
+    private static final int SerialNumber = 2;// 序列号 测试时的序列号
 
     private static final byte STRINGBYTE = (byte) 0x00, BYTEBYTE = (byte) 0x8f;// 高位1为byte数据，0为String数据
 
@@ -35,12 +35,11 @@ class DataProcessing {
             ENCODED = map.getEnCode();
             DATASIZE = map.getDataSize();
         }
-        map.put("JSONS", new JSONObject(map.getJsonObject()).toString());
         byte[] info = getInfo(ENCODED, DATASIZE, System.currentTimeMillis(),
                 new Random(System.currentTimeMillis() / UUID + UUID).nextInt(899) + 100,
                 map.hashCode());
         List<byte[]> datasString = putStringData(ENCODED, DATASIZE,
-                new JSONObject(map.getString()).toString().getBytes(ENCODED.getValue()));
+                new JSONObject(map.getNoBytesData()).toString().getBytes(ENCODED.getValue()));
         List<byte[]> datasByte = new ArrayList<>();
         {
             // 获取byte类型的消息

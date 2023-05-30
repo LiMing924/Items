@@ -222,7 +222,7 @@ public abstract class HandleReceive implements GetDataAndPacket {
 									ReceiveMap map = text.Handle(packet);
 									if (map != null) {
 										map.setIP(packet.getAddress(), packet.getPort());
-										sendDataToClient(map, packet.getAddress(), packet.getPort(), socket);
+										sendDataToClient(map, socket);
 									}
 								} catch (Exception e) {
 									writeStrongLog(socket.getLocalPort() + " 处理中断 " + FileRW.getError(e));
@@ -398,7 +398,7 @@ public abstract class HandleReceive implements GetDataAndPacket {
 	}
 
 	@Override
-	public abstract void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket)
+	public abstract void sendDataToClient(ReceiveMap data, DatagramSocket socket)
 			throws InterruptedException, ExecutionException, UnknownHostException;
 
 	// @Override

@@ -1,7 +1,6 @@
 package liming.texthandle;
 
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 
 /**
  * 该接口定义了获取数据和处理数据包的方法
@@ -10,12 +9,10 @@ public interface GetDataAndPacket {
 	/**
 	 * 处理收到的数据，并发送给客户端
 	 * 
-	 * @param data    数据
-	 * @param address 客户端地址
-	 * @param port    客户端端口
-	 * @param socket  数据包套接字
+	 * @param data   数据
+	 * @param socket 数据包套接字
 	 */
-	void sendDataToClient(ReceiveMap data, InetAddress address, int port, DatagramSocket socket) throws Exception;
+	void sendDataToClient(ReceiveMap data, DatagramSocket socket) throws Exception;
 
 	/**
 	 * 写入日志信息
