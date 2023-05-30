@@ -43,7 +43,7 @@ class DataProcessing {
         List<byte[]> datasByte = new ArrayList<>();
         {
             // 获取byte类型的消息
-            Map<String, byte[]> bytes = map.getByte();
+            Map<String, byte[]> bytes = map.getBytes();
             for (String key : bytes.keySet()) {
                 datasByte.addAll(putByteData(ENCODED, DATASIZE, key, bytes.get(key)));
             }

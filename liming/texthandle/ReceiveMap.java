@@ -17,7 +17,7 @@ public final class ReceiveMap {
     /**
      * byte[] 类型的key
      */
-    private final Set<String> byteKey;
+    private final Set<String> bytesKey;
 
     private InetAddress inetAddress;
     private int port;
@@ -29,7 +29,7 @@ public final class ReceiveMap {
 
     public ReceiveMap() {
         map = new HashMap<>();
-        byteKey = new HashSet<>();
+        bytesKey = new HashSet<>();
     }
 
     public ReceiveMap(InetAddress inetAddress, int port) {
@@ -40,6 +40,13 @@ public final class ReceiveMap {
     public ReceiveMap(String ip, int port) throws UnknownHostException {
         this();
         setIP(ip, port);
+    }
+
+    public ReceiveMap(ReceiveMap receiveMap) {
+        map = new HashMap<>(receiveMap.map);
+        bytesKey = new HashSet<>(receiveMap.bytesKey);
+        setInfo(receiveMap.info);
+        setIP(receiveMap.inetAddress, receiveMap.port);
     }
     // ========= put putAll ============
 
@@ -91,7 +98,7 @@ public final class ReceiveMap {
     }
 
     public synchronized ReceiveMap put(String key, byte[] value) {
-        byteKey.add(key);
+        bytesKey.add(key);
         map.put(key, value);
         return this;
     }
@@ -119,7 +126,8 @@ public final class ReceiveMap {
     }
 
     public synchronized ReceiveMap putAll(ReceiveMap receiveMap) {
-
+        map.putAll(receiveMap.map);
+        bytesKey.addAll(receiveMap.bytesKey);
         return this;
     }
 
@@ -132,8 +140,32 @@ public final class ReceiveMap {
     // ============= receive 方法区 ======================
 
     public synchronized Object remove(String key) {
-        byteKey.remove(key);
+        bytesKey.remove(key);
         return map.remove(key);
+    }
+
+    public synchronized void remove(String key, String... keys) {
+        remove(key);
+        for (String k : keys) {
+            remove(k);
+        }
+    }
+
+    public synchronized void removeBytesAll() {
+        for (String key : bytesKey) {
+            remove(key);
+        }
+    }
+
+    public synchronized void removeNoBytesAll() {
+        for (String key : getNoBytesKey()) {
+            remove(key);
+        }
+    }
+
+    public synchronized void removeAll() {
+        map.clear();
+        bytesKey.clear();
     }
 
     // ============== get pot 方法区 ======================
@@ -323,7 +355,7 @@ public final class ReceiveMap {
      */
     public Map<String, Object> getNoBytesData() {
         Map<String, Object> data = new HashMap<>(map);
-        for (String key : byteKey) {
+        for (String key : bytesKey) {
             data.remove(key);
         }
         return data;
@@ -332,18 +364,18 @@ public final class ReceiveMap {
     /**
      * 获取所有存放的非byte[]类型数据key
      */
-    public Set<String> getNoByteKey() {
+    public Set<String> getNoBytesKey() {
         Set<String> set = new HashSet<>(map.keySet());
-        set.removeAll(byteKey);
+        set.removeAll(bytesKey);
         return set;
     }
 
     /**
      * 获取所有存放的byte[]类型数据
      */
-    public Map<String, byte[]> getByte() {
+    public Map<String, byte[]> getBytes() {
         Map<String, byte[]> bytes = new HashMap<>();
-        for (String key : byteKey) {
+        for (String key : bytesKey) {
             bytes.put(key, optBytes(key, null));
         }
         return bytes;
@@ -352,8 +384,8 @@ public final class ReceiveMap {
     /**
      * 获取所有存放的byte[]类型数据key
      */
-    public Set<String> getByteKey() {
-        return byteKey;
+    public Set<String> getBytesKey() {
+        return bytesKey;
     }
 
     /**
@@ -367,7 +399,7 @@ public final class ReceiveMap {
      * 判断键是否为byte[]的数据key
      */
     public boolean containsByte(String key) {
-        return byteKey.contains(key);
+        return bytesKey.contains(key);
     }
 
     /**
@@ -512,7 +544,7 @@ public final class ReceiveMap {
 
     @Override
     public String toString() {
-        return "ReceiveMap [map=" + map.keySet() + ", byteKey=" + byteKey + "]";
+        return "ReceiveMap [map=" + map.keySet() + ",nobyteskey=" + getNoBytesKey() + ", bytesKey=" + bytesKey + "]";
     }
 
 }
